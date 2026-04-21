@@ -8,12 +8,7 @@ import ErrorMessage from '../../components/ErrorMessage'
 import { useResources } from '../../hooks/useResources'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../../api/axiosInstance'
-import { format } from 'date-fns'
-
-function toLocalISO(dt) {
-  const d = new Date(dt)
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString()
-}
+import { formatISTDate, formatISTDateTime, isAfterNowIST, toISTDateTimeInput } from '../../utils/time'
 
 export default function MaintenanceBlockPage() {
   const { data: resources = [] } = useResources()
@@ -34,13 +29,30 @@ export default function MaintenanceBlockPage() {
   const [form, setForm] = useState({ resource_id: '', start_time: '', end_time: '', reason: '' })
   const [deleteId, setDeleteId] = useState(null)
   const [error, setError] = useState(null)
+  const minStart = toISTDateTimeInput(new Date())
 
   const handleCreate = async (e) => {
-    e.preventDefault(); setError(null)
+    e.preventDefault()
+    setError(null)
+    if (!isAfterNowIST(form.start_time)) {
+      setError(new Error('Start time must be in the future.'))
+      return
+    }
+    if (!form.end_time || form.end_time <= form.start_time) {
+      setError(new Error('End time must be after start time.'))
+      return
+    }
     try {
-      await createBlock.mutateAsync({ ...form, resource_id: parseInt(form.resource_id), start_time: toLocalISO(form.start_time), end_time: toLocalISO(form.end_time) })
+      await createBlock.mutateAsync({
+        ...form,
+        resource_id: parseInt(form.resource_id),
+        start_time: form.start_time,
+        end_time: form.end_time
+      })
       setForm({ resource_id: '', start_time: '', end_time: '', reason: '' })
-    } catch (err) { setError(err) }
+    } catch (err) {
+      setError(err)
+    }
   }
 
   return (
@@ -51,7 +63,7 @@ export default function MaintenanceBlockPage() {
         <main className="flex-1 p-6 space-y-6">
           <div>
             <h2 className="text-2xl font-bold">Maintenance Blocks</h2>
-            <p className="text-white/40 mt-1">Block resources for maintenance — affected bookings will be cancelled automatically.</p>
+            <p className="text-white/40 mt-1">Block resources for maintenance - affected bookings will be cancelled automatically.</p>
           </div>
 
           <form onSubmit={handleCreate} className="card space-y-4">
@@ -59,22 +71,22 @@ export default function MaintenanceBlockPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">Resource</label>
-                <select className="input" value={form.resource_id} onChange={e => setForm(f => ({...f, resource_id: e.target.value}))} required>
+                <select className="input" value={form.resource_id} onChange={e => setForm(f => ({ ...f, resource_id: e.target.value }))} required>
                   <option value="">Select resource...</option>
                   {resources.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="label">Reason</label>
-                <input className="input" value={form.reason} onChange={e => setForm(f => ({...f, reason: e.target.value}))} placeholder="e.g. Deep cleaning" required />
+                <input className="input" value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="e.g. Deep cleaning" required />
               </div>
               <div>
                 <label className="label">Start</label>
-                <input type="datetime-local" className="input" value={form.start_time} onChange={e => setForm(f => ({...f, start_time: e.target.value}))} required />
+                <input type="datetime-local" className="input" min={minStart} value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} required />
               </div>
               <div>
                 <label className="label">End</label>
-                <input type="datetime-local" className="input" value={form.end_time} onChange={e => setForm(f => ({...f, end_time: e.target.value}))} required />
+                <input type="datetime-local" className="input" min={form.start_time || minStart} value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} required />
               </div>
             </div>
             <ErrorMessage error={error} />
@@ -83,24 +95,42 @@ export default function MaintenanceBlockPage() {
             </button>
           </form>
 
-          {isLoading ? <LoadingSpinner /> : blocks.length === 0 ? <EmptyState icon="✅" title="No active maintenance blocks" /> : (
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : blocks.length === 0 ? (
+            <EmptyState icon="✓" title="No active maintenance blocks" />
+          ) : (
             <div className="space-y-3">
               {blocks.map(b => (
                 <div key={b.id} className="card flex items-center justify-between">
                   <div>
                     <p className="font-semibold">{b.reason}</p>
-                    <p className="text-sm text-white/40">Resource #{b.resource_id} · {format(new Date(b.start_time), 'MMM d')} – {format(new Date(b.end_time), 'MMM d, h:mm a')}</p>
+                    <p className="text-sm text-white/40">
+                      Resource #{b.resource_id} · {formatISTDate(b.start_time, false)} - {formatISTDateTime(b.end_time)}
+                    </p>
                   </div>
-                  <button className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all" id={`btn-del-block-${b.id}`}
-                    onClick={() => setDeleteId(b.id)}>Remove</button>
+                  <button
+                    className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all"
+                    id={`btn-del-block-${b.id}`}
+                    onClick={() => setDeleteId(b.id)}
+                  >
+                    Remove
+                  </button>
                 </div>
               ))}
             </div>
           )}
         </main>
       </div>
-      <ConfirmModal isOpen={!!deleteId} title="Remove Maintenance Block?" message="This will allow new bookings for this time slot." confirmLabel="Remove" danger
-        onConfirm={async () => { await deleteBlock.mutateAsync(deleteId); setDeleteId(null) }} onCancel={() => setDeleteId(null)} />
+      <ConfirmModal
+        isOpen={!!deleteId}
+        title="Remove Maintenance Block?"
+        message="This will allow new bookings for this time slot."
+        confirmLabel="Remove"
+        danger
+        onConfirm={async () => { await deleteBlock.mutateAsync(deleteId); setDeleteId(null) }}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   )
 }

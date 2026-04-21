@@ -5,6 +5,7 @@
 | Edge Case | Handling |
 |---|---|
 | Start time in the past | `validate_future_datetime()` raises 422 |
+| Start time is today but already passed | Treated the same as a past datetime and rejected with 422 |
 | End time before start time | `validate_time_range()` raises 422 |
 | Resource inactive at booking time | Checked before any other validation → 404 |
 | Exact boundary overlap (`new_start == exist_end`) | Uses strict `<` / `>` not `<=` — boundary slots DO NOT conflict |
@@ -44,6 +45,8 @@
 | Edge Case | Handling |
 |---|---|
 | Maintenance block created over existing approved bookings | All overlapping approved/pending bookings are auto-cancelled with audit log entry |
+| Maintenance block starts in the past | Rejected with 422 |
+| Maintenance block end time before start time | Rejected with 422 |
 | Booking attempted during maintenance window | `check_maintenance_block()` raises `MaintenanceBlockError` |
 | Maintenance block removed | Cancelled bookings are NOT restored (by design — data integrity) |
 | Overlapping maintenance blocks | Allowed — multiple blocks can cover same range |

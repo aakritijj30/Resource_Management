@@ -1,10 +1,11 @@
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
 from dotenv import load_dotenv
 import bcrypt
+from utils.timezone import now_local
 
 load_dotenv()
 
@@ -29,7 +30,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc).replace(tzinfo=None) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = now_local() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 

@@ -2,7 +2,7 @@ import enum
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, Text, JSON
 from sqlalchemy.orm import relationship
 from database.connection import Base
-from datetime import datetime
+from utils.timezone import now_local_naive
 
 
 class AuditActionEnum(str, enum.Enum):
@@ -32,7 +32,7 @@ class AuditLog(Base):
     entity_type = Column(String(50), nullable=False)
     entity_id = Column(Integer, nullable=True)
     detail = Column(JSON, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime, default=now_local_naive, nullable=False)
 
     user = relationship("User", back_populates="audit_logs")
     booking = relationship("Booking", back_populates="audit_logs")

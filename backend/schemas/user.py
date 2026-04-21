@@ -29,3 +29,16 @@ class UserOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserProfileOut(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    role: RoleEnum
+    department_id: Optional[int]
+    department_name: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

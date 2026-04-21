@@ -2,7 +2,8 @@
 Tests for approval guard checks and invalid state transitions.
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import timedelta
+from utils.timezone import now_local_naive
 from uuid import uuid4
 from models.booking import Booking, BookingStatusEnum
 from models.approval import Approval, ApprovalDecisionEnum
@@ -12,7 +13,7 @@ from services.approval_service import decide_approval
 from utils.exceptions import InvalidStateTransitionError, UnauthorizedAccessError
 
 
-NOW_FUTURE = datetime.utcnow() + timedelta(days=3)
+NOW_FUTURE = now_local_naive() + timedelta(days=3)
 
 
 def _setup(db):

@@ -4,9 +4,12 @@ from fastapi import HTTPException
 from models.booking import Booking, BookingStatusEnum
 from models.maintenance_block import MaintenanceBlock
 from models.resource import Resource
+from utils.timezone import to_local_naive
 
 def check_maintenance_block(db: Session, resource_id: int, start_time: datetime, end_time: datetime):
     """Step 3: Maintenance block check -> raises if overlap."""
+    start_time = to_local_naive(start_time)
+    end_time = to_local_naive(end_time)
     overlap = db.query(MaintenanceBlock).filter(
         MaintenanceBlock.resource_id == resource_id,
         MaintenanceBlock.start_time < end_time,
@@ -18,6 +21,8 @@ def check_maintenance_block(db: Session, resource_id: int, start_time: datetime,
 
 def check_booking_conflict(db: Session, resource_id: int, start_time: datetime, end_time: datetime, exclude_booking_id: int = None):
     """Step 4: Booking conflict check -> raises if new_start < exist_end AND new_end > exist_start."""
+    start_time = to_local_naive(start_time)
+    end_time = to_local_naive(end_time)
     query = db.query(Booking).filter(
         Booking.resource_id == resource_id,
         Booking.status.in_([BookingStatusEnum.approved, BookingStatusEnum.pending]),
@@ -32,6 +37,8 @@ def check_booking_conflict(db: Session, resource_id: int, start_time: datetime, 
 
 def check_capacity(db: Session, resource_id: int, start_time: datetime, end_time: datetime, attendees: int, exclude_booking_id: int = None):
     """Step 5: Capacity check -> sums concurrent attendees vs resource capacity."""
+    start_time = to_local_naive(start_time)
+    end_time = to_local_naive(end_time)
     resource = db.query(Resource).filter(Resource.id == resource_id).first()
     if not resource:
         return

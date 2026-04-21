@@ -2,7 +2,7 @@ import enum
 from sqlalchemy import Column, Integer, String, Boolean, Enum, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from database.connection import Base
-from datetime import datetime
+from utils.timezone import now_local_naive
 
 
 class RoleEnum(str, enum.Enum):
@@ -21,7 +21,7 @@ class User(Base):
     role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.employee)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_local_naive)
 
     department = relationship("Department", back_populates="users", foreign_keys=[department_id])
     bookings = relationship("Booking", back_populates="user", foreign_keys="Booking.user_id")

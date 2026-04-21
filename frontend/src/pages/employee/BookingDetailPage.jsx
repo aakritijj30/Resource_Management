@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { format } from 'date-fns'
 import Sidebar from '../../components/Sidebar'
 import Navbar from '../../components/Navbar'
 import StatusBadge from '../../components/StatusBadge'
@@ -9,6 +8,7 @@ import ConfirmModal from '../../components/ConfirmModal'
 import ErrorMessage from '../../components/ErrorMessage'
 import { useBooking, useAuditTrail, useCancelBooking } from '../../hooks/useBookings'
 import { useResource } from '../../hooks/useResources'
+import { formatISTDate, formatISTTime, isAfterNowIST } from '../../utils/time'
 
 function getStatusNote(status) {
   if (status === 'pending') return 'Waiting for manager approval. The slot stays blocked while the request is under review.'
@@ -28,7 +28,7 @@ export default function BookingDetailPage() {
   const cancelBooking = useCancelBooking()
   const [showCancelModal, setShowCancelModal] = useState(false)
 
-  const canCancel = booking && ['pending', 'approved'].includes(booking.status) && new Date(booking.start_time) > new Date()
+  const canCancel = booking && ['pending', 'approved'].includes(booking.status) && isAfterNowIST(booking.start_time)
 
   const handleCancel = async () => {
     await cancelBooking.mutateAsync(Number(id))
@@ -75,13 +75,13 @@ export default function BookingDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-white/40 mb-1">Start</p>
-                <p className="font-semibold">{format(new Date(booking.start_time), 'MMM d, yyyy')}</p>
-                <p className="text-white/60 text-sm">{format(new Date(booking.start_time), 'h:mm a')}</p>
+                <p className="font-semibold">{formatISTDate(booking.start_time)}</p>
+                <p className="text-white/60 text-sm">{formatISTTime(booking.start_time)}</p>
               </div>
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-white/40 mb-1">End</p>
-                <p className="font-semibold">{format(new Date(booking.end_time), 'MMM d, yyyy')}</p>
-                <p className="text-white/60 text-sm">{format(new Date(booking.end_time), 'h:mm a')}</p>
+                <p className="font-semibold">{formatISTDate(booking.end_time)}</p>
+                <p className="text-white/60 text-sm">{formatISTTime(booking.end_time)}</p>
               </div>
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-white/40 mb-1">Attendees</p>
@@ -113,7 +113,7 @@ export default function BookingDetailPage() {
             <div className="space-y-3 text-sm text-white/70">
               <div className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
                 <span>Submitted</span>
-                <span>{format(new Date(booking.created_at), 'MMM d, h:mm a')}</span>
+                <span>{formatISTDate(booking.created_at)} {formatISTTime(booking.created_at)}</span>
               </div>
               <div className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
                 <span>Current status</span>
@@ -121,7 +121,7 @@ export default function BookingDetailPage() {
               </div>
               <div className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
                 <span>Latest update</span>
-                <span>{format(new Date(booking.updated_at), 'MMM d, h:mm a')}</span>
+                <span>{formatISTDate(booking.updated_at)} {formatISTTime(booking.updated_at)}</span>
               </div>
             </div>
           </div>
@@ -135,7 +135,7 @@ export default function BookingDetailPage() {
                     <div className="w-1.5 shrink-0 bg-primary-600/40 rounded-full mt-1" />
                     <div>
                       <span className="font-medium capitalize">{log.action.replace(/_/g, ' ')}</span>
-                      <span className="text-white/40 ml-2">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</span>
+                      <span className="text-white/40 ml-2">{formatISTDate(log.timestamp)} {formatISTTime(log.timestamp)}</span>
                       {log.detail?.comment && <p className="text-white/50 mt-0.5">"{log.detail.comment}"</p>}
                       {log.detail?.reason && <p className="text-white/50 mt-0.5">{log.detail.reason}</p>}
                     </div>

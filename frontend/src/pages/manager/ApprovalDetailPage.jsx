@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { format } from 'date-fns'
 import Sidebar from '../../components/Sidebar'
 import Navbar from '../../components/Navbar'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -9,6 +8,7 @@ import ErrorMessage from '../../components/ErrorMessage'
 import { getApproval, decideApproval } from '../../api/approvalApi'
 import { useBooking } from '../../hooks/useBookings'
 import { useResource } from '../../hooks/useResources'
+import { formatISTDateTime, formatISTTime } from '../../utils/time'
 
 export default function ApprovalDetailPage() {
   const { id } = useParams()
@@ -66,7 +66,7 @@ export default function ApprovalDetailPage() {
               <div>
                 <h2 className="text-xl font-bold">Booking Request #{booking.id}</h2>
                 <p className="text-white/40 text-sm mt-1">
-                  Submitted {format(new Date(approval.created_at), 'MMM d, yyyy h:mm a')}
+                  Submitted {formatISTDateTime(approval.created_at)}
                 </p>
               </div>
               <span className="badge bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">Pending</span>
@@ -83,11 +83,11 @@ export default function ApprovalDetailPage() {
               </div>
               <div className="bg-white/5 rounded-xl p-3">
                 <p className="text-xs text-white/40 mb-1">Start</p>
-                <p className="font-medium">{format(new Date(booking.start_time), 'MMM d, h:mm a')}</p>
+                <p className="font-medium">{formatISTDateTime(booking.start_time, false)}</p>
               </div>
               <div className="bg-white/5 rounded-xl p-3">
                 <p className="text-xs text-white/40 mb-1">End</p>
-                <p className="font-medium">{format(new Date(booking.end_time), 'h:mm a')}</p>
+                <p className="font-medium">{formatISTTime(booking.end_time)}</p>
               </div>
               <div className="bg-white/5 rounded-xl p-3">
                 <p className="text-xs text-white/40 mb-1">Resource</p>

@@ -9,16 +9,11 @@ const STATUS_STYLES = {
   draft:     'bg-purple-500/20 text-purple-300 border border-purple-500/30',
 }
 
-const DOTS = {
-  pending: '🟡', approved: '🟢', rejected: '🔴',
-  cancelled: '⚫', completed: '🔵', draft: '🟣'
-}
-
 export default function StatusBadge({ status }) {
   const s = status?.toLowerCase() || 'draft'
   return (
     <span className={clsx('badge', STATUS_STYLES[s] || 'bg-white/10 text-white/50')}>
-      <span>{DOTS[s]}</span>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {s.charAt(0).toUpperCase() + s.slice(1)}
     </span>
   )

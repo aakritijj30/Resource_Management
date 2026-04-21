@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
 from models.audit_log import AuditLog, AuditActionEnum
 from typing import Optional
+from utils.timezone import now_local_naive
 
 
 def log_action(
@@ -20,7 +20,7 @@ def log_action(
         entity_type=entity_type,
         entity_id=entity_id,
         detail=detail,
-        timestamp=datetime.now(timezone.utc).replace(tzinfo=None)
+        timestamp=now_local_naive()
     )
     db.add(log)
     # Note: caller is responsible for db.commit()

@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, time, timezone
+from datetime import datetime, time
 from fastapi import HTTPException
 from models.resource_policy import ResourcePolicy
+from utils.office_hours import GLOBAL_OFFICE_HOURS_END, GLOBAL_OFFICE_HOURS_START, office_hours_label
+from utils.timezone import now_local_naive, to_local_naive
 
 def get_policy(db: Session, resource_id: int) -> ResourcePolicy:
     return db.query(ResourcePolicy).filter(ResourcePolicy.resource_id == resource_id).first()
@@ -19,6 +21,8 @@ def upsert_policy(db: Session, resource_id: int, policy_data: dict) -> ResourceP
 
 def enforce_policy(db: Session, resource_id: int, start_time: datetime, end_time: datetime):
     """Step 2: Policy validation - validates custom constraints per resource."""
+    start_time = to_local_naive(start_time)
+    end_time = to_local_naive(end_time)
     policy = get_policy(db, resource_id)
     if not policy:
         return
@@ -32,16 +36,13 @@ def enforce_policy(db: Session, resource_id: int, start_time: datetime, end_time
         raise HTTPException(status_code=422, detail=f"Maximum booking duration is {policy.max_duration_hours} hours.")
 
     if policy.office_hours_start is not None and policy.office_hours_end is not None:
-        office_start = time(policy.office_hours_start, 0)
-        office_end = time(policy.office_hours_end, 0)
+        office_start = time(GLOBAL_OFFICE_HOURS_START, 0)
+        office_end = time(GLOBAL_OFFICE_HOURS_END, 0)
         if start_time.time() < office_start or end_time.time() > office_end:
-            raise HTTPException(
-                status_code=422, 
-                detail=f"Booking must fall strictly within office hours ({policy.office_hours_start}:00 - {policy.office_hours_end}:00)."
-            )
+            raise HTTPException(status_code=422, detail=f"Booking must fall strictly within office hours ({office_hours_label()}).")
 
     if policy.advance_booking_days is not None:
-        advance_days = (start_time.date() - datetime.now(timezone.utc).date()).days
+        advance_days = (start_time.date() - now_local_naive().date()).days
         if advance_days > policy.advance_booking_days:
             raise HTTPException(status_code=422, detail=f"Cannot book more than {policy.advance_booking_days} days in advance.")
 

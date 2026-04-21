@@ -2,7 +2,7 @@ import enum
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from database.connection import Base
-from datetime import datetime
+from utils.timezone import now_local_naive
 
 
 class BookingStatusEnum(str, enum.Enum):
@@ -25,8 +25,8 @@ class Booking(Base):
     purpose = Column(Text, nullable=False)
     attendees = Column(Integer, default=1)
     status = Column(Enum(BookingStatusEnum), nullable=False, default=BookingStatusEnum.pending)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=now_local_naive)
+    updated_at = Column(DateTime, default=now_local_naive, onupdate=now_local_naive)
 
     user = relationship("User", back_populates="bookings", foreign_keys=[user_id])
     resource = relationship("Resource", back_populates="bookings")

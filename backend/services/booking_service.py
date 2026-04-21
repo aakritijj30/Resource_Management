@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
 from models.booking import Booking, BookingStatusEnum
 from models.approval import Approval
 from models.resource import Resource
@@ -13,11 +12,15 @@ from utils.exceptions import (
     BookingNotFoundError, UnauthorizedAccessError, InvalidStateTransitionError, NoManagerAssignedError
 )
 from utils.helpers import validate_future_datetime, validate_time_range
+from utils.timezone import now_local_naive, to_local_naive
 
 
 def create_booking(db: Session, data: BookingCreate, current_user: User) -> Booking:
-    validate_future_datetime(data.start_time)
-    validate_time_range(data.start_time, data.end_time)
+    start_time = to_local_naive(data.start_time)
+    end_time = to_local_naive(data.end_time)
+
+    validate_future_datetime(start_time)
+    validate_time_range(start_time, end_time)
 
     resource = db.query(Resource).filter(Resource.id == data.resource_id, Resource.is_active == True).first()
     if not resource:
@@ -25,10 +28,10 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> Book
         raise ResourceNotFoundError()
 
     # Run all validation checks
-    enforce_policy(db, data.resource_id, data.start_time, data.end_time)
-    check_maintenance_block(db, data.resource_id, data.start_time, data.end_time)
-    check_booking_conflict(db, data.resource_id, data.start_time, data.end_time)
-    check_capacity(db, data.resource_id, data.start_time, data.end_time, data.attendees)
+    enforce_policy(db, data.resource_id, start_time, end_time)
+    check_maintenance_block(db, data.resource_id, start_time, end_time)
+    check_booking_conflict(db, data.resource_id, start_time, end_time)
+    check_capacity(db, data.resource_id, start_time, end_time, data.attendees)
 
     # Determine initial status
     if resource.approval_required:
@@ -39,8 +42,8 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> Book
     booking = Booking(
         user_id=current_user.id,
         resource_id=data.resource_id,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_time=start_time,
+        end_time=end_time,
         purpose=data.purpose,
         attendees=data.attendees,
         status=status
@@ -68,7 +71,7 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> Book
 
 def refresh_completed_bookings(db: Session) -> int:
     """Promote expired approved bookings to completed and write an audit entry."""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = now_local_naive()
     updated = db.query(Booking).filter(
         Booking.status == BookingStatusEnum.approved,
         Booking.end_time < now
@@ -104,7 +107,7 @@ def cancel_booking(db: Session, booking_id: int, current_user: User) -> Booking:
         raise InvalidStateTransitionError(booking.status.value, "cancelled")
 
     # Must be before start time
-    if booking.start_time <= datetime.now(timezone.utc).replace(tzinfo=None):
+    if booking.start_time <= now_local_naive():
         from fastapi import HTTPException
         raise HTTPException(status_code=422, detail="Cannot cancel a booking that has already started")
 

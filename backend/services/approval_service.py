@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from datetime import datetime
 from models.approval import Approval, ApprovalDecisionEnum
 from models.booking import Booking, BookingStatusEnum
 from models.user import User, RoleEnum
@@ -7,6 +7,7 @@ from services.audit_service import log_action
 from models.audit_log import AuditActionEnum
 from services.conflict_service import check_booking_conflict, check_capacity
 from utils.exceptions import UnauthorizedAccessError, InvalidStateTransitionError, BookingNotFoundError
+from utils.timezone import now_local_naive
 
 
 def get_pending_approvals(db: Session, manager: User):
@@ -62,7 +63,7 @@ def decide_approval(db: Session, approval_id: int, decision: ApprovalDecisionEnu
 
     approval.decision = decision
     approval.comment = comment
-    approval.decided_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    approval.decided_at = now_local_naive()
     db.commit()
     db.refresh(approval)
     return approval

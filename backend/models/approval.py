@@ -2,7 +2,7 @@ import enum
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from database.connection import Base
-from datetime import datetime
+from utils.timezone import now_local_naive
 
 
 class ApprovalDecisionEnum(str, enum.Enum):
@@ -20,7 +20,7 @@ class Approval(Base):
     decision = Column(Enum(ApprovalDecisionEnum), nullable=False, default=ApprovalDecisionEnum.pending)
     comment = Column(Text, nullable=True)
     decided_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_local_naive)
 
     booking = relationship("Booking", back_populates="approval")
     manager = relationship("User", back_populates="approvals", foreign_keys=[manager_id])

@@ -20,7 +20,7 @@ function PolicyForm({ resource }) {
   const [form, setForm] = useState(null)
   const [error, setError] = useState(null)
 
-  const currentPolicy = form || policy || { max_duration_hours: 8, min_duration_hours: 0.5, office_hours_start: 8, office_hours_end: 18, advance_booking_days: 30 }
+  const currentPolicy = form || policy || { max_duration_hours: 8, min_duration_hours: 0.5, office_hours_start: 9, office_hours_end: 18, advance_booking_days: 30 }
 
   const handleSave = async (e) => {
     e.preventDefault()

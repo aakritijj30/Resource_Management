@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database.connection import Base, engine
+from database.connection import Base, engine, SessionLocal
 from routers.auth import router as auth_router
 from routers.users import router as users_router
 from routers.resources import router as resources_router
@@ -11,6 +11,8 @@ from routers.reports import router as reports_router
 
 # Import all models so Alembic and create_all can see them
 import models  # noqa
+from models.resource_policy import ResourcePolicy
+from utils.office_hours import GLOBAL_OFFICE_HOURS_START, GLOBAL_OFFICE_HOURS_END
 
 app = FastAPI(
     title="Enterprise Booking System",
@@ -41,6 +43,19 @@ app.include_router(reports_router)
 def on_startup():
     """Create all tables on startup (use Alembic in production)."""
     Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        policies = db.query(ResourcePolicy).all()
+        dirty = False
+        for policy in policies:
+            if policy.office_hours_start != GLOBAL_OFFICE_HOURS_START or policy.office_hours_end != GLOBAL_OFFICE_HOURS_END:
+                policy.office_hours_start = GLOBAL_OFFICE_HOURS_START
+                policy.office_hours_end = GLOBAL_OFFICE_HOURS_END
+                dirty = True
+        if dirty:
+            db.commit()
+    finally:
+        db.close()
 
 
 @app.get("/health", tags=["health"])

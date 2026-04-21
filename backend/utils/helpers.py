@@ -1,5 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from fastapi import HTTPException, status
+from utils.timezone import now_local_naive, to_local_naive
 
 
 def times_overlap(start1: datetime, end1: datetime, start2: datetime, end2: datetime) -> bool:
@@ -9,21 +10,9 @@ def times_overlap(start1: datetime, end1: datetime, start2: datetime, end2: date
     """
     return start1 < end2 and end1 > start2
 
-
-# def validate_future_datetime(dt: datetime) -> None:
-#     if dt <= datetime.now(timezone.utc).replace(tzinfo=None):
-#         raise HTTPException(
-#             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-#             detail="Booking start time must be in the future"
-#         )
 def validate_future_datetime(dt: datetime) -> None:
-    # If incoming datetime is naive → assume UTC (or change if needed)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-
-    now_utc = datetime.now(timezone.utc)
-
-    if dt <= now_utc:
+    dt_local = to_local_naive(dt)
+    if dt_local <= now_local_naive():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Booking start time must be in the future"
@@ -31,7 +20,9 @@ def validate_future_datetime(dt: datetime) -> None:
 
 
 def validate_time_range(start: datetime, end: datetime) -> None:
-    if end <= start:
+    start_local = to_local_naive(start)
+    end_local = to_local_naive(end)
+    if end_local <= start_local:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="End time must be after start time"

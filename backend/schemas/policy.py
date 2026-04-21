@@ -6,7 +6,7 @@ class PolicyCreate(BaseModel):
     resource_id: int
     max_duration_hours: float = 8.0
     min_duration_hours: float = 0.5
-    office_hours_start: int = 8
+    office_hours_start: int = 9
     office_hours_end: int = 18
     allowed_days: int = 0b0111110  # Mon-Fri
     require_justification: bool = False

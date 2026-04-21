@@ -5,15 +5,21 @@ from models.booking import Booking, BookingStatusEnum
 from models.audit_log import AuditActionEnum
 from services.audit_service import log_action
 from schemas.maintenance import MaintenanceCreate
+from utils.helpers import validate_future_datetime, validate_time_range
+from utils.timezone import to_local_naive
 
 def get_maintenance_blocks(db: Session):
     return db.query(MaintenanceBlock).order_by(MaintenanceBlock.start_time.desc()).all()
 
 def create_maintenance_block(db: Session, data: MaintenanceCreate, admin_id: int):
+    start_time = to_local_naive(data.start_time)
+    end_time = to_local_naive(data.end_time)
+    validate_future_datetime(start_time)
+    validate_time_range(start_time, end_time)
     block = MaintenanceBlock(
         resource_id=data.resource_id,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_time=start_time,
+        end_time=end_time,
         reason=data.reason,
         created_by=admin_id
     )
@@ -26,8 +32,8 @@ def create_maintenance_block(db: Session, data: MaintenanceCreate, admin_id: int
     overlapping_bookings = db.query(Booking).filter(
         Booking.resource_id == data.resource_id,
         Booking.status.in_([BookingStatusEnum.pending, BookingStatusEnum.approved]),
-        Booking.start_time < data.end_time,
-        Booking.end_time > data.start_time
+        Booking.start_time < end_time,
+        Booking.end_time > start_time
     ).all()
 
     for booking in overlapping_bookings:

@@ -16,7 +16,8 @@ from models.resource_policy import ResourcePolicy
 from models.booking import Booking, BookingStatusEnum
 from models.approval import Approval, ApprovalDecisionEnum
 from services.auth_service import hash_password
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
+from utils.timezone import now_local_naive
 
 Base.metadata.create_all(bind=engine)
 db = SessionLocal()
@@ -57,16 +58,16 @@ db.flush()
 
 # ─── Policies ────────────────────────────────────────────────────────────────
 policies = [
-    ResourcePolicy(resource_id=r1.id, max_duration_hours=8,  office_hours_start=8, office_hours_end=18),
-    ResourcePolicy(resource_id=r2.id, max_duration_hours=4,  office_hours_start=8, office_hours_end=20),
-    ResourcePolicy(resource_id=r3.id, max_duration_hours=2,  office_hours_start=9, office_hours_end=17),
-    ResourcePolicy(resource_id=r4.id, max_duration_hours=10, office_hours_start=7, office_hours_end=19),
-    ResourcePolicy(resource_id=r5.id, max_duration_hours=6,  office_hours_start=8, office_hours_end=18),
+    ResourcePolicy(resource_id=r1.id, max_duration_hours=8,  office_hours_start=9, office_hours_end=18),
+    ResourcePolicy(resource_id=r2.id, max_duration_hours=4,  office_hours_start=9, office_hours_end=18),
+    ResourcePolicy(resource_id=r3.id, max_duration_hours=2,  office_hours_start=9, office_hours_end=18),
+    ResourcePolicy(resource_id=r4.id, max_duration_hours=10, office_hours_start=9, office_hours_end=18),
+    ResourcePolicy(resource_id=r5.id, max_duration_hours=6,  office_hours_start=9, office_hours_end=18),
 ]
 db.add_all(policies)
 
 # ─── Sample Bookings ─────────────────────────────────────────────────────────
-now = datetime.now(timezone.utc).replace(tzinfo=None)
+now = now_local_naive()
 b1 = Booking(user_id=emp1.id, resource_id=r2.id,
              start_time=now + timedelta(days=1, hours=2),
              end_time=now + timedelta(days=1, hours=4),

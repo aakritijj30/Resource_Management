@@ -2,17 +2,21 @@
 Tests for booking state transitions and cancellation logic.
 """
 import pytest
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+from fastapi import HTTPException
+from utils.timezone import now_local_naive
 from uuid import uuid4
 from models.audit_log import AuditActionEnum, AuditLog
 from models.booking import Booking, BookingStatusEnum
 from models.resource import Resource, ResourceTypeEnum
+from models.resource_policy import ResourcePolicy
 from models.user import User, RoleEnum
-from services.booking_service import cancel_booking, refresh_completed_bookings
+from schemas.booking import BookingCreate
+from services.booking_service import cancel_booking, create_booking, refresh_completed_bookings
 from utils.exceptions import InvalidStateTransitionError, UnauthorizedAccessError
 
 
-NOW_FUTURE = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=5)
+NOW_FUTURE = now_local_naive() + timedelta(days=5)
 
 
 def _setup(db):
@@ -34,6 +38,44 @@ def test_cancel_approved_booking(db):
     db.add(b); db.commit(); db.refresh(b)
     updated = cancel_booking(db, b.id, u)
     assert updated.status == BookingStatusEnum.cancelled
+
+
+def test_create_booking_rejects_past_start_time(db):
+    r, u = _setup(db)
+    past_start = now_local_naive() - timedelta(hours=1)
+    data = BookingCreate(
+        resource_id=r.id,
+        start_time=past_start,
+        end_time=past_start + timedelta(hours=1),
+        purpose="Past booking",
+        attendees=1,
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        create_booking(db, data, u)
+
+    assert exc.value.status_code == 422
+
+
+def test_create_booking_shows_readable_office_hours(db):
+    r, u = _setup(db)
+    db.add(ResourcePolicy(resource_id=r.id, office_hours_start=9, office_hours_end=18))
+    db.commit()
+
+    start = now_local_naive() + timedelta(days=1)
+    data = BookingCreate(
+        resource_id=r.id,
+        start_time=start.replace(hour=8, minute=0, second=0, microsecond=0),
+        end_time=start.replace(hour=9, minute=0, second=0, microsecond=0),
+        purpose="Early booking",
+        attendees=1,
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        create_booking(db, data, u)
+
+    assert exc.value.status_code == 422
+    assert "9:00 am - 6:00 pm" in str(exc.value.detail).lower()
 
 
 def test_cancel_already_cancelled_raises(db):
@@ -70,7 +112,7 @@ def test_cancel_other_users_booking_raises(db):
 
 def test_refresh_marks_expired_approved_bookings_completed_and_logs(db):
     r, u = _setup(db)
-    past_end = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+    past_end = now_local_naive() - timedelta(hours=1)
     b = Booking(
         user_id=u.id,
         resource_id=r.id,

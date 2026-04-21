@@ -6,12 +6,7 @@ import ErrorMessage from '../../components/ErrorMessage'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import { useResource } from '../../hooks/useResources'
 import { useCreateBooking } from '../../hooks/useBookings'
-import { format } from 'date-fns'
-
-function toLocalISO(dt) {
-  const d = new Date(dt)
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString()
-}
+import { isAfterNowIST, toISTDateTimeInput } from '../../utils/time'
 
 export default function BookingFormPage() {
   const { resourceId } = useParams()
@@ -27,15 +22,24 @@ export default function BookingFormPage() {
   })
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+  const minStart = toISTDateTimeInput(new Date())
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    if (!isAfterNowIST(form.start_time)) {
+      setError(new Error('Start time must be in the future.'))
+      return
+    }
+    if (!form.end_time || form.end_time <= form.start_time) {
+      setError(new Error('End time must be after start time.'))
+      return
+    }
     try {
       await createBooking.mutateAsync({
         resource_id: parseInt(resourceId),
-        start_time: toLocalISO(form.start_time),
-        end_time: toLocalISO(form.end_time),
+        start_time: form.start_time,
+        end_time: form.end_time,
         purpose: form.purpose,
         attendees: parseInt(form.attendees),
       })
@@ -76,11 +80,13 @@ export default function BookingFormPage() {
                 <div>
                   <label className="label" htmlFor="start_time">Start Time</label>
                   <input id="start_time" type="datetime-local" className="input"
+                    min={minStart}
                     value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} required />
                 </div>
                 <div>
                   <label className="label" htmlFor="end_time">End Time</label>
                   <input id="end_time" type="datetime-local" className="input"
+                    min={form.start_time || minStart}
                     value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} required />
                 </div>
               </div>

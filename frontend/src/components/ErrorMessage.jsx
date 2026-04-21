@@ -1,16 +1,20 @@
 export default function ErrorMessage({ error }) {
   if (!error) return null
-  const msg = error?.response?.data?.detail || error?.message || 'Something went wrong'
-  const isConflict = msg.toLowerCase().includes('conflict')
-  const isPolicy   = msg.toLowerCase().includes('policy') || msg.toLowerCase().includes('duration') || msg.toLowerCase().includes('hours')
-  const isMaint    = msg.toLowerCase().includes('maintenance')
 
-  const icon = isConflict ? '⚡' : isPolicy ? '📋' : isMaint ? '🔧' : '❌'
+  const msg = error?.response?.data?.detail || error?.message || 'Something went wrong'
+  const lower = msg.toLowerCase()
+  const isConflict = lower.includes('conflict')
+  const isPolicy = lower.includes('policy') || lower.includes('duration') || lower.includes('hours')
+  const isMaint = lower.includes('maintenance')
+
+  const marker = isConflict ? 'C' : isPolicy ? 'P' : isMaint ? 'M' : '!'
 
   return (
-    <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm animate-fade-in">
-      <span className="text-lg shrink-0">{icon}</span>
-      <span>{msg}</span>
+    <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 animate-fade-in">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rose-200 bg-white text-xs font-bold text-rose-700 shadow-sm">
+        {marker}
+      </span>
+      <span className="pt-0.5 leading-6">{msg}</span>
     </div>
   )
 }
