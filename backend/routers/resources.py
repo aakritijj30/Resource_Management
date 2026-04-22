@@ -14,8 +14,16 @@ router = APIRouter(prefix="/resources", tags=["resources"])
 
 
 @router.get("/", response_model=List[ResourceOut])
-def list_resources(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, active_only: bool = True):
-    return get_all_resources(db, skip, limit, active_only)
+def list_resources(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    skip: int = 0,
+    limit: int = 100,
+    active_only: bool = True
+):
+    # Admins see all resources; employees and managers see common + their dept
+    dept_filter = None if current_user.role == RoleEnum.admin else current_user.department_id
+    return get_all_resources(db, skip, limit, active_only, department_id=dept_filter)
 
 
 @router.get("/{resource_id}", response_model=ResourceOut)

@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Boolean, Enum, Text
+from sqlalchemy import Column, Integer, String, Boolean, Enum, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from database.connection import Base
 
@@ -23,7 +23,10 @@ class Resource(Base):
     description = Column(Text, nullable=True)
     approval_required = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    # NULL = shared/common resource visible to all; set to dept id for dept-specific
+    department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
 
+    department = relationship("Department", backref="resources", foreign_keys=[department_id])
     policy = relationship("ResourcePolicy", back_populates="resource", uselist=False, cascade="all, delete-orphan")
     bookings = relationship("Booking", back_populates="resource")
     maintenance_blocks = relationship("MaintenanceBlock", back_populates="resource", cascade="all, delete-orphan")

@@ -1,14 +1,23 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from models.resource import Resource
 from models.resource_policy import ResourcePolicy
 from schemas.resource import ResourceCreate, ResourceUpdate
 from utils.exceptions import ResourceNotFoundError
 
 
-def get_all_resources(db: Session, skip: int = 0, limit: int = 100, active_only: bool = True):
+def get_all_resources(db: Session, skip: int = 0, limit: int = 100, active_only: bool = True, department_id: int = None):
+    """
+    Returns resources filtered by visibility:
+    - department_id=None (admin): return all resources
+    - department_id set: return common resources (dept=NULL) + department-specific ones
+    """
     q = db.query(Resource)
     if active_only:
         q = q.filter(Resource.is_active == True)
+    if department_id is not None:
+        # Common resources (NULL dept) + resources matching user's department
+        q = q.filter(or_(Resource.department_id == None, Resource.department_id == department_id))
     return q.offset(skip).limit(limit).all()
 
 

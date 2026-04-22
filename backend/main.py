@@ -8,6 +8,7 @@ from routers.bookings import router as bookings_router
 from routers.approvals import router as approvals_router
 from routers.maintenance import router as maintenance_router
 from routers.reports import router as reports_router
+from routers.departments import router as departments_router
 
 # Import all models so Alembic and create_all can see them
 import models  # noqa
@@ -23,7 +24,14 @@ app = FastAPI(
 # CORS — allow frontend dev server
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,6 +40,7 @@ app.add_middleware(
 # Register routers
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(departments_router)
 app.include_router(resources_router)
 app.include_router(bookings_router)
 app.include_router(approvals_router)

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+import os
 from sqlalchemy.orm import Session
 from schemas.auth import LoginRequest, SignupRequest, TokenResponse, EmailAvailabilityResponse
 from schemas.user import UserProfileOut
@@ -26,11 +27,12 @@ def _auth_payload(user: User) -> dict:
 
 @router.post("/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == data.email).first()
+    # Normalize email to lowercase for case-insensitive match
+    email = data.email.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
-    
-    # Explicitly check for False, averting a lockout if the boolean was saved as None
+
     if user.is_active is False:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account deactivated")
 
@@ -42,29 +44,54 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
 @router.get("/check-email", response_model=EmailAvailabilityResponse)
 def check_email(email: str = Query(...), db: Session = Depends(get_db)):
-    exists = db.query(User.id).filter(User.email == email).first() is not None
-    return {"available": not exists, "email": email}
+    normalized = email.strip().lower()
+    exists = db.query(User.id).filter(User.email == normalized).first() is not None
+    return {"available": not exists, "email": normalized}
 
 
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def signup(data: SignupRequest, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == data.email).first():
+    # Normalize email to lowercase before storing
+    normalized_email = data.email.strip().lower()
+
+    if db.query(User).filter(User.email == normalized_email).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
-    if data.department_id is not None:
-        department = db.query(Department).filter(Department.id == data.department_id).first()
-        if not department:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Department not found")
+    # Block admin sign-up
+    if data.role == RoleEnum.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin accounts cannot be created via sign-up."
+        )
+
+    # Validate manager secret key
+    if data.role == RoleEnum.manager:
+        expected_key = os.getenv("MANAGER_SIGNUP_KEY")
+        if not expected_key or data.manager_secret_key != expected_key:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid Manager Secret Key."
+            )
+
+    # Validate department exists
+    department = db.query(Department).filter(Department.id == data.department_id).first()
+    if not department:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Department not found.")
 
     user = User(
-        email=data.email,
+        email=normalized_email,
         full_name=data.full_name,
         hashed_password=hash_password(data.password),
-        role=RoleEnum.employee,
+        role=data.role,
         department_id=data.department_id
     )
     db.add(user)
-    db.flush()
+    db.flush()  # get user.id before commit
+
+    # Auto-assign manager to their department
+    if data.role == RoleEnum.manager:
+        department.manager_id = user.id
+
     log_action(db, user.id, AuditActionEnum.user_created, "user", user.id)
     db.commit()
     db.refresh(user)

@@ -4,7 +4,7 @@ from typing import Optional
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
 from dotenv import load_dotenv
-import bcrypt
+from passlib.context import CryptContext
 from utils.timezone import now_local
 
 load_dotenv()
@@ -13,17 +13,17 @@ SECRET_KEY = os.getenv("SECRET_KEY", "fallback_secret_key")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
 
+# Use passlib CryptContext — more reliable than raw bcrypt across Python versions
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-    return hashed.decode("utf-8")
+    return pwd_context.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     try:
-        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+        return pwd_context.verify(plain, hashed)
     except Exception:
         return False
 

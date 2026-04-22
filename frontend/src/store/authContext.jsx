@@ -58,8 +58,8 @@ export function AuthProvider({ children }) {
     return profile.data
   }
 
-  const signup = async ({ email, full_name, password, department_id }) => {
-    const res = await apiSignup({ email, full_name, password, department_id })
+  const signup = async ({ email, full_name, password, role, department_id, manager_secret_key }) => {
+    const res = await apiSignup({ email, full_name, password, role, department_id, manager_secret_key })
     const { access_token } = res.data
     localStorage.setItem('access_token', access_token)
     const profile = await getMe()

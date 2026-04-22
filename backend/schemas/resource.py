@@ -10,6 +10,7 @@ class ResourceCreate(BaseModel):
     location: Optional[str] = None
     description: Optional[str] = None
     approval_required: bool = False
+    department_id: Optional[int] = None  # None = common/shared resource
 
 
 class ResourceUpdate(BaseModel):
@@ -20,6 +21,7 @@ class ResourceUpdate(BaseModel):
     description: Optional[str] = None
     approval_required: Optional[bool] = None
     is_active: Optional[bool] = None
+    department_id: Optional[int] = None
 
 
 class ResourceOut(BaseModel):
@@ -31,5 +33,6 @@ class ResourceOut(BaseModel):
     description: Optional[str]
     approval_required: bool
     is_active: bool
+    department_id: Optional[int] = None
 
     model_config = {"from_attributes": True}

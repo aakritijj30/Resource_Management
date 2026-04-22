@@ -1,5 +1,5 @@
 """
-Seed script — run once to populate demo data.
+Mandatory Seed script — ensures Admin + department-specific resources exist.
 Usage:  python database/seed.py
 """
 import sys
@@ -7,91 +7,108 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.connection import SessionLocal, engine, Base
-import models  # noqa — ensure all tables are registered
+import models  # noqa
 
-from models.department import Department
 from models.user import User, RoleEnum
+from models.department import Department
 from models.resource import Resource, ResourceTypeEnum
 from models.resource_policy import ResourcePolicy
-from models.booking import Booking, BookingStatusEnum
-from models.approval import Approval, ApprovalDecisionEnum
 from services.auth_service import hash_password
-from datetime import timedelta
-from utils.timezone import now_local_naive
 
-Base.metadata.create_all(bind=engine)
-db = SessionLocal()
 
-# ─── Departments ────────────────────────────────────────────────────────────
-depts = [
-    Department(name="Engineering"),
-    Department(name="Marketing"),
-    Department(name="Operations"),
-]
-db.add_all(depts)
-db.flush()
+def seed_mandatory():
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
 
-# ─── Users ──────────────────────────────────────────────────────────────────
-admin = User(email="admin@company.com", full_name="Alice Admin", hashed_password=hash_password("admin123"), role=RoleEnum.admin)
-mgr1  = User(email="mgr.eng@company.com",  full_name="Bob Manager",    hashed_password=hash_password("manager123"), role=RoleEnum.manager, department_id=depts[0].id)
-mgr2  = User(email="mgr.mkt@company.com",  full_name="Carol Manager",  hashed_password=hash_password("manager123"), role=RoleEnum.manager, department_id=depts[1].id)
-emp1  = User(email="emp1@company.com", full_name="Dave Employee",  hashed_password=hash_password("emp123"), role=RoleEnum.employee, department_id=depts[0].id)
-emp2  = User(email="emp2@company.com", full_name="Eve Employee",   hashed_password=hash_password("emp123"), role=RoleEnum.employee, department_id=depts[0].id)
-emp3  = User(email="emp3@company.com", full_name="Frank Employee", hashed_password=hash_password("emp123"), role=RoleEnum.employee, department_id=depts[1].id)
+    try:
+        # ── Admin ────────────────────────────────────────────────────────────
+        admin_email = "admin@company.com"
+        admin = db.query(User).filter(User.email == admin_email).first()
+        if not admin:
+            admin = User(
+                email=admin_email,
+                full_name="System Admin",
+                hashed_password=hash_password("admin123"),
+                role=RoleEnum.admin,
+                is_active=True
+            )
+            db.add(admin)
+            db.commit()
+            print(f"Admin created: {admin_email} / admin123")
+        else:
+            print(f"Admin already exists: {admin_email}")
 
-db.add_all([admin, mgr1, mgr2, emp1, emp2, emp3])
-db.flush()
+        # ── Department-Specific Resources ─────────────────────────────────────
+        # Map department name -> list of resources to seed
+        dept_resources = {
+            "Data and AI": [
+                dict(name="AI Workstation Lab", type=ResourceTypeEnum.lab, capacity=10, location="Floor 4 - Room 401", approval_required=False, description="High-GPU workstations for AI/ML model training"),
+                dict(name="Data Science Meeting Room", type=ResourceTypeEnum.conference_room, capacity=8, location="Floor 4 - Room 402", approval_required=False, description="Private meeting room with dual 4K displays"),
+            ],
+            "Salesforce": [
+                dict(name="CRM Training Suite", type=ResourceTypeEnum.conference_room, capacity=15, location="Floor 2 - Room 201", approval_required=False, description="Equipped with Salesforce sandbox environments"),
+                dict(name="Client Demo Room", type=ResourceTypeEnum.conference_room, capacity=6, location="Floor 2 - Room 205", approval_required=True, description="Premium AV setup for client-facing demos"),
+            ],
+            "AI First Labs": [
+                dict(name="Innovation Lab A", type=ResourceTypeEnum.lab, capacity=12, location="Floor 5 - Lab A", approval_required=False, description="Collaborative space with whiteboards and rapid prototyping tools"),
+                dict(name="3D Printer Station", type=ResourceTypeEnum.equipment, capacity=1, location="Floor 5 - Lab B", approval_required=True, description="Industrial 3D printer for prototype manufacturing"),
+            ],
+            "Planning": [
+                dict(name="Strategy Board Room", type=ResourceTypeEnum.conference_room, capacity=20, location="Floor 3 - Room 301", approval_required=True, description="Executive-level boardroom for planning sessions"),
+                dict(name="Project War Room", type=ResourceTypeEnum.conference_room, capacity=10, location="Floor 3 - Room 308", approval_required=False, description="Dedicated space for project sprints and war-room sessions"),
+            ],
+            "Digital Transformation": [
+                dict(name="DevOps Lab", type=ResourceTypeEnum.lab, capacity=8, location="Floor 6 - Lab DT", approval_required=False, description="CI/CD pipeline infrastructure and cloud monitoring dashboards"),
+                dict(name="UX Research Lab", type=ResourceTypeEnum.lab, capacity=6, location="Floor 6 - Room 601", approval_required=False, description="User testing lab with eye-tracking equipment"),
+            ],
+        }
 
-# Assign managers to departments
-depts[0].manager_id = mgr1.id
-depts[1].manager_id = mgr2.id
+        # Shared/common resources (visible to everyone)
+        common_resources = [
+            dict(name="Main Conference Hall", type=ResourceTypeEnum.conference_room, capacity=50, location="Ground Floor", approval_required=True, description="Large all-hands conference hall for company events", department_id=None),
+            dict(name="Company Van A", type=ResourceTypeEnum.vehicle, capacity=8, location="Parking Bay 1", approval_required=True, description="Company vehicle for off-site visits", department_id=None),
+        ]
 
-# ─── Resources ──────────────────────────────────────────────────────────────
-r1 = Resource(name="Conference Room A", type=ResourceTypeEnum.conference_room, capacity=10, location="Floor 2", approval_required=True)
-r2 = Resource(name="Conference Room B", type=ResourceTypeEnum.conference_room, capacity=6,  location="Floor 3", approval_required=False)
-r3 = Resource(name="3D Printer",        type=ResourceTypeEnum.equipment,       capacity=1,  location="Lab 1",   approval_required=True)
-r4 = Resource(name="Company Van",       type=ResourceTypeEnum.vehicle,         capacity=8,  location="Parking", approval_required=True)
-r5 = Resource(name="Training Lab",      type=ResourceTypeEnum.lab,             capacity=20, location="Floor 1", approval_required=False)
+        seeded_resources = 0
 
-db.add_all([r1, r2, r3, r4, r5])
-db.flush()
+        # Seed common resources
+        for r_data in common_resources:
+            exists = db.query(Resource).filter(Resource.name == r_data["name"]).first()
+            if not exists:
+                resource = Resource(**r_data)
+                db.add(resource)
+                db.flush()
+                db.add(ResourcePolicy(resource_id=resource.id, max_duration_hours=8, office_hours_start=9, office_hours_end=18))
+                seeded_resources += 1
 
-# ─── Policies ────────────────────────────────────────────────────────────────
-policies = [
-    ResourcePolicy(resource_id=r1.id, max_duration_hours=8,  office_hours_start=9, office_hours_end=18),
-    ResourcePolicy(resource_id=r2.id, max_duration_hours=4,  office_hours_start=9, office_hours_end=18),
-    ResourcePolicy(resource_id=r3.id, max_duration_hours=2,  office_hours_start=9, office_hours_end=18),
-    ResourcePolicy(resource_id=r4.id, max_duration_hours=10, office_hours_start=9, office_hours_end=18),
-    ResourcePolicy(resource_id=r5.id, max_duration_hours=6,  office_hours_start=9, office_hours_end=18),
-]
-db.add_all(policies)
+        # Seed department-specific resources
+        for dept_name, resources in dept_resources.items():
+            dept = db.query(Department).filter(Department.name == dept_name).first()
+            if not dept:
+                print(f"  Warning: Department '{dept_name}' not found, skipping resources.")
+                continue
 
-# ─── Sample Bookings ─────────────────────────────────────────────────────────
-now = now_local_naive()
-b1 = Booking(user_id=emp1.id, resource_id=r2.id,
-             start_time=now + timedelta(days=1, hours=2),
-             end_time=now + timedelta(days=1, hours=4),
-             purpose="Sprint Planning", status=BookingStatusEnum.approved)
-b2 = Booking(user_id=emp2.id, resource_id=r1.id,
-             start_time=now + timedelta(days=2, hours=3),
-             end_time=now + timedelta(days=2, hours=5),
-             purpose="Design Review", status=BookingStatusEnum.pending)
-b3 = Booking(user_id=emp3.id, resource_id=r5.id,
-             start_time=now + timedelta(days=1, hours=1),
-             end_time=now + timedelta(days=1, hours=3),
-             purpose="Team Training", status=BookingStatusEnum.approved)
+            for r_data in resources:
+                exists = db.query(Resource).filter(Resource.name == r_data["name"]).first()
+                if not exists:
+                    resource = Resource(**r_data, department_id=dept.id)
+                    db.add(resource)
+                    db.flush()
+                    db.add(ResourcePolicy(resource_id=resource.id, max_duration_hours=4, office_hours_start=9, office_hours_end=18))
+                    seeded_resources += 1
 
-db.add_all([b1, b2, b3])
-db.flush()
+        db.commit()
+        if seeded_resources:
+            print(f"Resources seeded: {seeded_resources} new resources added.")
+        else:
+            print("Resources: all already exist, nothing new added.")
 
-# Approval for b2
-db.add(Approval(booking_id=b2.id, manager_id=mgr1.id, decision=ApprovalDecisionEnum.pending))
+    except Exception as e:
+        print(f"Error during seeding: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
-db.commit()
-db.close()
-print("✅ Seed complete — demo data loaded.")
-print("\nDemo credentials:")
-print("  admin@company.com        / admin123")
-print("  mgr.eng@company.com      / manager123")
-print("  mgr.mkt@company.com      / manager123")
-print("  emp1@company.com         / emp123")
+
+if __name__ == "__main__":
+    seed_mandatory()
