@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, Integer
 from models.booking import Booking, BookingStatusEnum
 from models.resource import Resource
 from models.department import Department
@@ -56,7 +56,7 @@ def get_dept_usage(db: Session):
             Department.id,
             Department.name,
             func.count(Booking.id).label("total"),
-            func.sum((Booking.status == BookingStatusEnum.approved).cast(db.bind.dialect.name == "postgresql" and "int" or "integer")).label("approved"),
+            func.sum((Booking.status == BookingStatusEnum.approved).cast(Integer)).label("approved"),
         )
         .join(User, User.department_id == Department.id)
         .join(Booking, Booking.user_id == User.id)

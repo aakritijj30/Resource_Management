@@ -1,72 +1,90 @@
-import { useNavigate } from 'react-router-dom'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import EmptyState from '../../components/EmptyState'
-import { useQuery } from '@tanstack/react-query'
-import { getApprovalQueue } from '../../api/approvalApi'
-import { formatISTDateTime } from '../../utils/time'
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { getApprovalQueue } from '../../api/approvalApi';
+import { formatISTDateTime } from '../../utils/time';
+import HeroSection from '../../components/dashboard/HeroSection';
+
+import DeptUsageWidget from '../../components/dashboard/DeptUsageWidget';
+import { motion } from 'framer-motion';
+import { Clock, ArrowRight } from 'lucide-react';
 
 export default function ApprovalQueuePage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const { data: approvals = [], isLoading } = useQuery({
     queryKey: ['approvals', 'queue'],
     queryFn: () => getApprovalQueue().then(r => r.data)
-  })
+  });
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Navbar title="Approval Queue" />
-        <main className="flex-1 p-6 space-y-6">
-          <section className="space-y-3">
-            <div className="page-kicker">Manager review</div>
-            <h1 className="page-title">Pending approvals</h1>
-            <p className="page-copy">
-              {approvals.length} request{approvals.length !== 1 ? 's' : ''} waiting for your decision.
-            </p>
-          </section>
+    <div className="w-full flex-col flex animate-fade-in relative z-10">
+      <HeroSection />
+
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] items-start">
+        <DeptUsageWidget />
+
+        {/* Approval Queue Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="card flex flex-col"
+        >
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                <Clock size={16} />
+              </div>
+              <h2 className="text-lg font-bold text-surface-900">Pending Approvals</h2>
+            </div>
+            <span className="badge bg-amber-100 text-amber-800 border-amber-200">{approvals.length} Requests</span>
+          </div>
 
           {isLoading ? (
-            <LoadingSpinner />
+            <div className="flex-1 flex items-center justify-center min-h-[200px]">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+            </div>
           ) : approvals.length === 0 ? (
-            <EmptyState
-              icon="OK"
-              title="All caught up"
-              description="No pending approvals are currently waiting in your queue."
-            />
+            <div className="flex-1 flex flex-col items-center justify-center min-h-[200px] text-surface-400">
+              <Clock size={40} className="mb-3 opacity-20" />
+              <p>All caught up!</p>
+            </div>
           ) : (
-            <div className="grid gap-4">
-              {approvals.map(a => (
-                <button
+            <div className="flex flex-col gap-3 overflow-y-auto max-h-[380px] pr-2">
+              {approvals.map((a, idx) => (
+                <motion.button
                   key={a.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5 + idx * 0.1 }}
                   type="button"
-                  className="card flex w-full items-center justify-between gap-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-yellow-500/20"
+                  className="group flex w-full items-center justify-between gap-3 text-left p-3 rounded-2xl border border-surface-200 bg-surface-50 hover:bg-amber-50 hover:border-amber-200 transition-colors"
                   onClick={() => navigate(`/manager/approvals/${a.id}`)}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-yellow-400/20 bg-yellow-500/10 text-sm font-bold tracking-[0.2em] text-yellow-100">
-                      {String(a.booking_id).slice(-2)}
-                    </div>
-                    <div>
-                      <p className="text-base font-display font-semibold text-white">Booking #{a.booking_id}</p>
-                      <p className="mt-1 text-xs text-white/40">
-                        Submitted {formatISTDateTime(a.created_at, false)}
-                      </p>
-                    </div>
-                  </div>
-
                   <div className="flex items-center gap-3">
-                    <span className="chip border-yellow-400/20 bg-yellow-500/10 text-yellow-100">Pending</span>
-                    <span className="text-sm text-white/30">Review →</span>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm text-xs font-bold text-surface-600">
+                      #{String(a.booking_id).slice(-2)}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="bg-white border border-surface-200 rounded-xl p-2">
+                        <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest">Requester</p>
+                        <p className="font-semibold text-surface-900 text-sm">{a.user_name || 'System User'}</p>
+                      </div>
+                      <div className="bg-white border border-surface-200 rounded-xl p-2">
+                        <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest">Resource</p>
+                        <p className="font-semibold text-surface-900 text-sm">{a.resource_name || `Booking #${a.booking_id}`}</p>
+                      </div>
+                    </div>
                   </div>
-                </button>
+                  <div className="flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                    <span className="text-xs font-medium text-amber-700 hidden sm:inline-block">Review</span>
+                    <ArrowRight size={16} className="text-amber-600 translate-x-0 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </motion.button>
               ))}
             </div>
           )}
-        </main>
+        </motion.div>
       </div>
     </div>
-  )
+  );
 }

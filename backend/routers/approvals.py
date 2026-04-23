@@ -2,11 +2,19 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from schemas.approval import ApprovalDecide, ApprovalOut
-from services.approval_service import get_pending_approvals, get_approval_by_id, decide_approval
+from services.approval_service import get_pending_approvals, get_approval_history, get_approval_by_id, decide_approval
 from models.user import User, RoleEnum
 from utils.dependencies import get_db, require_role
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
+
+
+@router.get("/history", response_model=List[ApprovalOut])
+def get_history(
+    db: Session = Depends(get_db),
+    manager: User = Depends(require_role(RoleEnum.manager, RoleEnum.admin))
+):
+    return get_approval_history(db, manager)
 
 
 @router.get("/queue", response_model=List[ApprovalOut])

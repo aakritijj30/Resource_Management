@@ -21,6 +21,8 @@ class BookingOut(BaseModel):
     id: int
     user_id: int
     resource_id: int
+    user_name: Optional[str] = None
+    resource_name: Optional[str] = None
     start_time: datetime
     end_time: datetime
     purpose: str

@@ -1,91 +1,103 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
-import StatusBadge from '../../components/StatusBadge'
-import ConfirmModal from '../../components/ConfirmModal'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import EmptyState from '../../components/EmptyState'
-import BookingSummary from '../../components/BookingSummary'
-import { useBookings, useCancelBooking } from '../../hooks/useBookings'
-import { formatISTDateTime, formatISTTime, isAfterNowIST } from '../../utils/time'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import StatusBadge from '../../components/StatusBadge';
+import ConfirmModal from '../../components/ConfirmModal';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import EmptyState from '../../components/EmptyState';
+import BookingSummary from '../../components/BookingSummary';
+import { useBookings, useCancelBooking } from '../../hooks/useBookings';
+import { formatISTDateTime, formatISTTime, isAfterNowIST } from '../../utils/time';
+import { ArrowLeft } from 'lucide-react';
 
 export default function MyBookingsPage() {
-  const navigate = useNavigate()
-  const { data: bookings = [], isLoading } = useBookings()
-  const cancelBooking = useCancelBooking()
-  const [cancelId, setCancelId] = useState(null)
+  const navigate = useNavigate();
+  const { data: bookings = [], isLoading } = useBookings();
+  const cancelBooking = useCancelBooking();
+  const [cancelId, setCancelId] = useState(null);
 
   const handleCancel = async () => {
-    await cancelBooking.mutateAsync(cancelId)
-    setCancelId(null)
-  }
+    await cancelBooking.mutateAsync(cancelId);
+    setCancelId(null);
+  };
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Navbar title="My Bookings" />
-        <main className="flex-1 space-y-6 p-4 sm:p-6">
-          <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="page-kicker">Booking history</div>
-              <h1 className="page-title">My bookings</h1>
-              <p className="page-copy">
-                {bookings.length} total booking{bookings.length !== 1 ? 's' : ''}.
-              </p>
-            </div>
-            <button className="btn-primary self-start" onClick={() => navigate('/employee/resources')} id="btn-new-booking">
-              + New Booking
-            </button>
-          </section>
+    <div className="w-full flex-col flex animate-fade-in relative z-10 pb-10">
+      
+      {/* Header */}
+      <section className="page-header-card space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary-100/70 hover:text-white transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Back
+          </button>
+          
+          <button 
+             className="group flex h-10 items-center gap-2 rounded-full bg-white/10 px-4 text-xs font-bold uppercase tracking-widest text-white backdrop-blur-md border border-white/20 transition-all hover:bg-white hover:text-primary-700 active:scale-95" 
+             onClick={() => navigate('/employee/resources')}
+          >
+            + New Booking
+          </button>
+        </div>
 
-          <BookingSummary
-            bookings={bookings}
-            title="Status overview"
-            subtitle="Track every booking state in a glance."
-          />
+        <div className="space-y-2">
+          <div className="page-kicker">Personal tracker</div>
+          <h1 className="page-title">My bookings</h1>
+          <p className="page-copy">
+            {bookings.length} total booking{bookings.length !== 1 ? 's' : ''}. Track your history and approvals.
+          </p>
+        </div>
+      </section>
 
-          {isLoading ? (
-            <LoadingSpinner />
-          ) : bookings.length === 0 ? (
-            <EmptyState icon="BK" title="No bookings yet" description="Make your first booking by browsing available resources." />
-          ) : (
-            <div className="grid gap-3">
-              {bookings.map(b => (
-                <div
-                  key={b.id}
-                  className="card flex cursor-pointer flex-col gap-4 transition-all hover:border-white/20 md:flex-row md:items-center md:justify-between"
-                  onClick={() => navigate(`/employee/bookings/${b.id}`)}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-white group-hover:text-primary-400 transition-colors">{b.purpose}</p>
-                    <p className="mt-1 text-xs text-white/40">
-                      {formatISTDateTime(b.start_time)} - {formatISTTime(b.end_time)}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3 md:flex-shrink-0">
-                    <StatusBadge status={b.status} />
-                    {['pending', 'approved'].includes(b.status) && isAfterNowIST(b.start_time) && (
-                      <button
-                        id={`btn-cancel-${b.id}`}
-                        className="rounded-lg px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
-                        onClick={e => {
-                          e.stopPropagation()
-                          setCancelId(b.id)
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </main>
+      {/* Booking Summary Widget (Ensure inside it uses surface colors) */}
+      <div className="mb-6">
+        <BookingSummary
+          bookings={bookings}
+          title="Status overview"
+          subtitle="Track every booking state in a glance."
+        />
       </div>
+
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : bookings.length === 0 ? (
+        <EmptyState icon="BK" title="No bookings yet" description="Make your first booking by browsing available resources." />
+      ) : (
+        <div className="grid gap-4">
+          {bookings.map(b => (
+            <div
+              key={b.id}
+              className="card flex cursor-pointer flex-col gap-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary-200/60 hover:shadow-glow md:flex-row md:items-center md:justify-between p-5"
+              onClick={() => navigate(`/employee/bookings/${b.id}`)}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display font-semibold text-surface-900 group-hover:text-primary-700 transition-colors">{b.purpose}</p>
+                <p className="mt-1 text-sm font-medium text-surface-500">
+                  {formatISTDateTime(b.start_time)} - {formatISTTime(b.end_time)}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 md:flex-shrink-0">
+                <StatusBadge status={b.status} />
+                {['pending', 'approved'].includes(b.status) && isAfterNowIST(b.start_time) && (
+                  <button
+                    id={`btn-cancel-${b.id}`}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setCancelId(b.id);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={!!cancelId}
@@ -97,5 +109,5 @@ export default function MyBookingsPage() {
         onCancel={() => setCancelId(null)}
       />
     </div>
-  )
+  );
 }

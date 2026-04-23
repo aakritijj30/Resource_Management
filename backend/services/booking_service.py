@@ -123,7 +123,16 @@ def get_bookings(db: Session, current_user: User, skip: int = 0, limit: int = 50
     q = db.query(Booking)
     if current_user.role == RoleEnum.employee:
         q = q.filter(Booking.user_id == current_user.id)
-    return q.order_by(Booking.created_at.desc()).offset(skip).limit(limit).all()
+    
+    results = q.order_by(Booking.created_at.desc()).offset(skip).limit(limit).all()
+    
+    # Manually attach names for the schema to pick up, or rely on relationships if lazy loading is fast enough.
+    # To be safe and avoid N+1, we can just ensure they are loaded.
+    for b in results:
+        b.user_name = b.user.full_name if b.user else f"User #{b.user_id}"
+        b.resource_name = b.resource.name if b.resource else f"Resource #{b.resource_id}"
+        
+    return results
 
 
 def get_booking_by_id(db: Session, booking_id: int, current_user: User) -> Booking:
@@ -133,6 +142,10 @@ def get_booking_by_id(db: Session, booking_id: int, current_user: User) -> Booki
         raise BookingNotFoundError()
     if current_user.role == RoleEnum.employee and booking.user_id != current_user.id:
         raise UnauthorizedAccessError()
+        
+    booking.user_name = booking.user.full_name if booking.user else f"User #{booking.user_id}"
+    booking.resource_name = booking.resource.name if booking.resource else f"Resource #{booking.resource_id}"
+    
     return booking
 
 

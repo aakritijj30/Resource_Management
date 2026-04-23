@@ -1,5 +1,3 @@
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import { useUsageReport, useTrends } from '../../hooks/useReports'
 import {
@@ -14,7 +12,7 @@ export default function ReportsDashboardPage() {
   const { data: trends = [], isLoading: trendsLoading } = useTrends(6)
 
   if (isLoading || trendsLoading) return (
-    <div className="flex min-h-screen"><Sidebar /><div className="flex-1"><Navbar title="Reports" /><LoadingSpinner /></div></div>
+    <div className="w-full flex justify-center py-20"><LoadingSpinner /></div>
   )
 
   const statusPie = report ? [
@@ -26,19 +24,16 @@ export default function ReportsDashboardPage() {
   ].filter(d => d.value > 0) : []
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Navbar title="Reports Dashboard" />
-        <main className="flex-1 p-6 space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold">Reports &amp; Analytics</h2>
-            <p className="text-white/40 mt-1">System-wide booking insights</p>
-          </div>
+    <div className="w-full flex-col flex animate-fade-in relative z-10 pb-12">
+      <section className="page-header-card space-y-4">
+        <div className="page-kicker">Data & Insights</div>
+        <h1 className="page-title">Reports</h1>
+        <p className="page-copy">Usage statistics and booking trends across your organization.</p>
+      </section>
 
           {/* KPI row */}
           {report && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
               {[
                 { label: 'Total',     value: report.total_bookings,     icon: '📦' },
                 { label: 'Approved',  value: report.approved_bookings,  icon: '✅' },
@@ -47,8 +42,8 @@ export default function ReportsDashboardPage() {
               ].map(k => (
                 <div key={k.label} className="stat-card">
                   <span className="text-2xl">{k.icon}</span>
-                  <span className="text-3xl font-bold">{k.value}</span>
-                  <span className="text-white/40 text-sm">{k.label}</span>
+                  <span className="text-3xl font-extrabold text-primary-600">{k.value}</span>
+                  <span className="text-xs uppercase tracking-[0.2em] font-bold text-surface-400">{k.label}</span>
                 </div>
               ))}
             </div>
@@ -57,30 +52,35 @@ export default function ReportsDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Trends */}
             <div className="card">
-              <h3 className="font-semibold mb-4">Monthly Booking Trends</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={trends}>
-                  <XAxis dataKey="period" tick={{ fill: '#ffffff60', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#ffffff60', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }} />
-                  <Legend />
-                  <Line type="monotone" dataKey="total_bookings" stroke="#6366f1" strokeWidth={2} dot={false} name="Total" />
-                  <Line type="monotone" dataKey="approved"        stroke="#10b981" strokeWidth={2} dot={false} name="Approved" />
-                  <Line type="monotone" dataKey="rejected"        stroke="#ef4444" strokeWidth={2} dot={false} name="Rejected" />
+              <h3 className="font-semibold text-surface-900 mb-6 flex items-center gap-2">
+                Monthly Booking Trends
+              </h3>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={trends} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="period" tick={{ fill: '#64748B', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
+                  <YAxis tick={{ fill: '#64748B', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dx={-5} />
+                  <Tooltip 
+                    contentStyle={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)' }} 
+                    itemStyle={{ fontSize: '13px', fontWeight: 600 }}
+                  />
+                  <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px', fontWeight: 600, color: '#64748B' }} />
+                  <Line type="smooth" dataKey="total_bookings" stroke="#C06C84" strokeWidth={3} dot={{ r: 4, fill: '#C06C84', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} name="Total" />
+                  <Line type="smooth" dataKey="approved"        stroke="#10b981" strokeWidth={3} dot={false} name="Approved" />
+                  <Line type="smooth" dataKey="rejected"        stroke="#ef4444" strokeWidth={3} dot={false} name="Rejected" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
             {/* Status pie */}
             <div className="card">
-              <h3 className="font-semibold mb-4">Booking Status Breakdown</h3>
-              <ResponsiveContainer width="100%" height={220}>
+              <h3 className="font-semibold text-surface-900 mb-6">Booking Status Breakdown</h3>
+              <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
-                  <Pie data={statusPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                  <Pie data={statusPie} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={5} labelLine={false}>
                     {statusPie.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }} />
-                  <Legend />
+                  <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)' }} />
+                  <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 600, color: '#64748B' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -88,22 +88,20 @@ export default function ReportsDashboardPage() {
             {/* Top resources */}
             {report?.top_resources?.length > 0 && (
               <div className="card lg:col-span-2">
-                <h3 className="font-semibold mb-4">Top Resources by Bookings</h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={report.top_resources} margin={{ top: 5, right: 15, left: 0, bottom: 5 }}>
-                    <XAxis dataKey="resource_name" tick={{ fill: '#ffffff60', fontSize: 12 }} />
-                    <YAxis tick={{ fill: '#ffffff60', fontSize: 12 }} />
-                    <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }} />
-                    <Bar dataKey="total_bookings" radius={[6,6,0,0]}>
-                      {report.top_resources.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <h3 className="font-semibold text-surface-900 mb-6">Top Resources by Bookings</h3>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={report.top_resources} margin={{ top: 5, right: 15, left: -20, bottom: 5 }}>
+                    <XAxis dataKey="resource_name" tick={{ fill: '#64748B', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
+                    <YAxis tick={{ fill: '#64748B', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dx={-5} />
+                    <Tooltip cursor={{ fill: '#F8FAFC' }} contentStyle={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: 12 }} />
+                    <Bar dataKey="total_bookings" radius={[6,6,0,0]} maxBarSize={50}>
+                      {report.top_resources.map((_, i) => <Cell key={i} fill={['#C06C84', '#F67280', '#F8B195', '#355C7D', '#99B898'][i % 5]} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
   )
 }

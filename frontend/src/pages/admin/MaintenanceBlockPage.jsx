@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import EmptyState from '../../components/EmptyState'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -56,15 +54,12 @@ export default function MaintenanceBlockPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Navbar title="Maintenance Blocks" />
-        <main className="flex-1 p-6 space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold">Maintenance Blocks</h2>
-            <p className="text-white/40 mt-1">Block resources for maintenance - affected bookings will be cancelled automatically.</p>
-          </div>
+    <div className="w-full flex-col flex animate-fade-in relative z-10 pb-12">
+      <section className="page-header-card space-y-4">
+        <div className="page-kicker">Maintenance Control</div>
+        <h1 className="page-title">Operations</h1>
+        <p className="page-copy">Block resources for maintenance - affected bookings will be cancelled automatically.</p>
+      </section>
 
           <form onSubmit={handleCreate} className="card space-y-4">
             <h3 className="font-semibold">New Maintenance Block</h3>
@@ -105,7 +100,7 @@ export default function MaintenanceBlockPage() {
                 <div key={b.id} className="card flex items-center justify-between">
                   <div>
                     <p className="font-semibold">{b.reason}</p>
-                    <p className="text-sm text-white/40">
+                    <p className="text-sm text-surface-500 font-medium pb-2">
                       Resource #{b.resource_id} · {formatISTDate(b.start_time, false)} - {formatISTDateTime(b.end_time)}
                     </p>
                   </div>
@@ -120,8 +115,6 @@ export default function MaintenanceBlockPage() {
               ))}
             </div>
           )}
-        </main>
-      </div>
       <ConfirmModal
         isOpen={!!deleteId}
         title="Remove Maintenance Block?"

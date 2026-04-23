@@ -1,12 +1,12 @@
 import clsx from 'clsx'
 
 const STATUS_STYLES = {
-  pending:   'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
-  approved:  'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-  rejected:  'bg-red-500/20 text-red-300 border border-red-500/30',
-  cancelled: 'bg-white/10 text-white/50 border border-white/10',
-  completed: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-  draft:     'bg-purple-500/20 text-purple-300 border border-purple-500/30',
+  pending:   'bg-amber-50 text-amber-700 border-amber-200',
+  approved:  'bg-emerald-50 text-emerald-700 border-emerald-200',
+  rejected:  'bg-rose-50 text-rose-700 border-rose-200',
+  cancelled: 'bg-surface-100 text-surface-600 border-surface-200',
+  completed: 'bg-sky-50 text-sky-700 border-sky-200',
+  draft:     'bg-violet-50 text-violet-700 border-violet-200',
 }
 
 export default function StatusBadge({ status }) {

@@ -17,6 +17,8 @@ class ApprovalOut(BaseModel):
     id: int
     booking_id: int
     manager_id: Optional[int]
+    user_name: Optional[str] = None
+    resource_name: Optional[str] = None
     decision: ApprovalDecisionEnum
     comment: Optional[str]
     decided_at: Optional[datetime]

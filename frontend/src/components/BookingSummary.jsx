@@ -45,8 +45,8 @@ export default function BookingSummary({ bookings = [], title = 'Booking status'
           <div key={card.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">{card.label}</p>
-              <p className="mt-2 text-3xl font-display font-semibold text-slate-900">{card.value}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-surface-400">{card.label}</p>
+              <p className="mt-2 text-3xl font-display font-extrabold text-primary-600">{card.value}</p>
             </div>
               {card.status ? <StatusBadge status={card.status} /> : <span className="chip">All</span>}
             </div>
