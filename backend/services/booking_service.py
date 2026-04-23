@@ -1,9 +1,12 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from models.booking import Booking, BookingStatusEnum
 from models.approval import Approval
+from models.approval import ApprovalDecisionEnum
+from models.audit_log import AuditLog
+from models.notification import Notification
 from models.resource import Resource
 from models.user import User, RoleEnum
-from schemas.booking import BookingCreate
+from schemas.booking import BookingCreate, BookingUpdate
 from services.conflict_service import check_booking_conflict, check_capacity, check_maintenance_block
 from services.policy_service import enforce_policy
 from services.audit_service import log_action
@@ -13,6 +16,45 @@ from utils.exceptions import (
 )
 from utils.helpers import validate_future_datetime, validate_time_range
 from utils.timezone import now_local_naive, to_local_naive
+from datetime import datetime
+
+
+def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datetime, end_time: datetime, current_user: User, exclude_booking_id: int = None):
+    """If manager/admin, preempt employee bookings. Otherwise raise conflict."""
+    if current_user.role not in [RoleEnum.manager, RoleEnum.admin]:
+        check_booking_conflict(db, resource_id, start_time, end_time, exclude_booking_id)
+        return
+
+    conflicts = db.query(Booking).options(joinedload(Booking.user)).filter(
+        Booking.resource_id == resource_id,
+        Booking.status.in_([BookingStatusEnum.approved, BookingStatusEnum.pending]),
+        Booking.start_time < end_time,
+        Booking.end_time > start_time
+    )
+    if exclude_booking_id:
+        conflicts = conflicts.filter(Booking.id != exclude_booking_id)
+
+    conflict_list = conflicts.all()
+    if not conflict_list:
+        return
+
+    # If any conflict is with a Manager or Admin, we cannot preempt.
+    if any(b.user.role in [RoleEnum.manager, RoleEnum.admin] for b in conflict_list):
+        check_booking_conflict(db, resource_id, start_time, end_time, exclude_booking_id)
+
+    # Preempt employee bookings
+    for b in conflict_list:
+        b.status = BookingStatusEnum.cancelled
+        log_action(db, current_user.id, AuditActionEnum.booking_cancelled, "booking", b.id,
+                   {"reason": f"Priority booking by {current_user.role.value} {current_user.full_name}", "preempted_by_role": current_user.role.value})
+        
+        notif = Notification(
+            user_id=b.user_id,
+            title="Booking Cancelled (Priority)",
+            message=f"Your booking for resource #{b.resource_id} starting at {b.start_time.isoformat()} was cancelled because a manager requires the slot."
+        )
+        db.add(notif)
+    db.flush()
 
 
 def create_booking(db: Session, data: BookingCreate, current_user: User) -> Booking:
@@ -30,14 +72,34 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> Book
     # Run all validation checks
     enforce_policy(db, data.resource_id, start_time, end_time)
     check_maintenance_block(db, data.resource_id, start_time, end_time)
-    check_booking_conflict(db, data.resource_id, start_time, end_time)
+    check_and_preempt_conflicts(db, data.resource_id, start_time, end_time, current_user)
     check_capacity(db, data.resource_id, start_time, end_time, data.attendees)
 
-    # Determine initial status
-    if resource.approval_required:
-        status = BookingStatusEnum.pending
-    else:
+    # Determine initial status and approval routing
+    is_common = resource.department_id is None
+    is_mgmt = current_user.role in [RoleEnum.manager, RoleEnum.admin]
+
+    status = BookingStatusEnum.approved
+    requires_approval_record = False
+    manager_id = None
+
+    if is_common:
+        # Common resources (Meeting areas, Board rooms): Auto-approve
         status = BookingStatusEnum.approved
+        requires_approval_record = False
+        manager_id = None
+    else:
+        # Department resources
+        if is_mgmt:
+            # Managers/Admins auto-approved for department resources
+            status = BookingStatusEnum.approved
+            requires_approval_record = False
+        elif resource.approval_required:
+            # Employees follow resource rules
+            status = BookingStatusEnum.pending
+            requires_approval_record = True
+            dept = current_user.department
+            manager_id = dept.manager_id if (dept and dept.manager_id) else None
 
     booking = Booking(
         user_id=current_user.id,
@@ -51,18 +113,100 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> Book
     db.add(booking)
     db.flush()
 
-    if resource.approval_required:
-        # Find manager of the user's department
-        dept = current_user.department
-        if not dept or not dept.manager_id:
-            raise NoManagerAssignedError()
-        approval = Approval(booking_id=booking.id, manager_id=dept.manager_id)
+    if requires_approval_record:
+        approval = Approval(booking_id=booking.id, manager_id=manager_id)
         db.add(approval)
         log_action(db, current_user.id, AuditActionEnum.booking_created, "booking", booking.id,
-                   {"status": "pending", "resource_id": data.resource_id})
+                   {"status": "pending", "resource_id": data.resource_id, "assigned_manager": manager_id})
     else:
         log_action(db, current_user.id, AuditActionEnum.booking_auto_approved, "booking", booking.id,
                    {"status": "approved", "resource_id": data.resource_id})
+
+    db.commit()
+    db.refresh(booking)
+    return booking
+
+
+def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_user: User) -> Booking:
+    booking = db.query(Booking).options(joinedload(Booking.approval), joinedload(Booking.user)).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise BookingNotFoundError()
+
+    if booking.user_id != current_user.id and current_user.role != RoleEnum.admin:
+        raise UnauthorizedAccessError()
+
+    if booking.status not in [BookingStatusEnum.pending, BookingStatusEnum.approved]:
+        raise InvalidStateTransitionError(booking.status.value, "updated")
+
+    if booking.start_time <= now_local_naive():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="Cannot edit a booking that has already started")
+
+    next_resource_id = data.resource_id or booking.resource_id
+    next_start = to_local_naive(data.start_time) if data.start_time else booking.start_time
+    next_end = to_local_naive(data.end_time) if data.end_time else booking.end_time
+
+    validate_future_datetime(next_start)
+    validate_time_range(next_start, next_end)
+
+    resource = db.query(Resource).filter(Resource.id == next_resource_id, Resource.is_active == True).first()
+    if not resource:
+        from utils.exceptions import ResourceNotFoundError
+        raise ResourceNotFoundError()
+
+    enforce_policy(db, next_resource_id, next_start, next_end)
+    check_maintenance_block(db, next_resource_id, next_start, next_end)
+    check_and_preempt_conflicts(db, next_resource_id, next_start, next_end, current_user, exclude_booking_id=booking.id)
+    next_attendees = data.attendees if data.attendees is not None else booking.attendees
+    check_capacity(db, next_resource_id, next_start, next_end, next_attendees, exclude_booking_id=booking.id)
+
+    previous_status = booking.status
+    approval_required = resource.approval_required
+
+    if data.resource_id is not None:
+        booking.resource_id = next_resource_id
+    if data.start_time is not None:
+        booking.start_time = next_start
+    if data.end_time is not None:
+        booking.end_time = next_end
+    if data.purpose is not None:
+        booking.purpose = data.purpose
+    if data.attendees is not None:
+        booking.attendees = data.attendees
+
+    if approval_required and booking.status == BookingStatusEnum.approved:
+        booking.status = BookingStatusEnum.pending
+        if booking.approval:
+            booking.approval.decision = ApprovalDecisionEnum.pending
+            booking.approval.comment = "Edited booking; reapproval required."
+            booking.approval.decided_at = None
+        else:
+            manager_id = None
+            if booking.user and booking.user.department:
+                manager_id = booking.user.department.manager_id
+            approval = Approval(booking_id=booking.id, manager_id=manager_id)
+            db.add(approval)
+    elif not approval_required and booking.status == BookingStatusEnum.pending:
+        booking.status = BookingStatusEnum.approved
+        if booking.approval:
+            db.delete(booking.approval)
+
+    log_action(
+        db,
+        current_user.id,
+        AuditActionEnum.booking_updated,
+        "booking",
+        booking.id,
+        {
+            "resource_id": booking.resource_id,
+            "purpose": booking.purpose,
+            "attendees": booking.attendees,
+            "start_time": booking.start_time.isoformat(),
+            "end_time": booking.end_time.isoformat(),
+            "previous_status": previous_status.value,
+            "status": booking.status.value,
+        },
+    )
 
     db.commit()
     db.refresh(booking)
@@ -112,28 +256,65 @@ def cancel_booking(db: Session, booking_id: int, current_user: User) -> Booking:
         raise HTTPException(status_code=422, detail="Cannot cancel a booking that has already started")
 
     booking.status = BookingStatusEnum.cancelled
-    log_action(db, current_user.id, AuditActionEnum.booking_cancelled, "booking", booking.id)
+    log_action(
+        db,
+        current_user.id,
+        AuditActionEnum.booking_cancelled,
+        "booking",
+        booking.id,
+        {
+            "cancelled_by": current_user.full_name,
+            "cancelled_by_role": current_user.role.value if hasattr(current_user.role, "value") else current_user.role,
+        },
+    )
     db.commit()
     db.refresh(booking)
     return booking
 
 
-def get_bookings(db: Session, current_user: User, skip: int = 0, limit: int = 50):
+def get_bookings(db: Session, current_user: User, skip: int = 0, limit: int = 50, mine_only: bool = False):
     refresh_completed_bookings(db)
-    q = db.query(Booking)
-    if current_user.role == RoleEnum.employee:
+    q = db.query(Booking).options(joinedload(Booking.user), joinedload(Booking.approval))
+    if mine_only or current_user.role == RoleEnum.employee:
         q = q.filter(Booking.user_id == current_user.id)
     return q.order_by(Booking.created_at.desc()).offset(skip).limit(limit).all()
 
 
+def get_department_bookings(db: Session, manager: User, skip: int = 0, limit: int = 50):
+    """Returns all bookings from users in the manager's department."""
+    refresh_completed_bookings(db)
+    if not manager.department_id:
+        return []
+    return (
+        db.query(Booking)
+        .options(joinedload(Booking.user), joinedload(Booking.approval))
+        .join(User, Booking.user_id == User.id)
+        .filter(User.department_id == manager.department_id)
+        .order_by(Booking.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
 def get_booking_by_id(db: Session, booking_id: int, current_user: User) -> Booking:
     refresh_completed_bookings(db)
-    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    booking = db.query(Booking).options(joinedload(Booking.user), joinedload(Booking.approval)).filter(Booking.id == booking_id).first()
     if not booking:
         raise BookingNotFoundError()
     if current_user.role == RoleEnum.employee and booking.user_id != current_user.id:
         raise UnauthorizedAccessError()
     return booking
+
+
+def get_booking_audit_trail(db: Session, booking_id: int):
+    return (
+        db.query(AuditLog)
+        .options(joinedload(AuditLog.user))
+        .filter(AuditLog.booking_id == booking_id)
+        .order_by(AuditLog.timestamp.asc())
+        .all()
+    )
 
 
 def mark_completed(db: Session) -> int:

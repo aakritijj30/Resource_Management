@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 from models.approval import Approval, ApprovalDecisionEnum
 from models.booking import Booking, BookingStatusEnum
@@ -11,21 +11,35 @@ from utils.timezone import now_local_naive
 
 
 def get_pending_approvals(db: Session, manager: User):
-    """Returns pending approvals for bookings from the manager's own department."""
-    return (
+    """Returns pending approvals. Admins see all; managers see only their department's."""
+    query = (
         db.query(Approval)
+        .options(joinedload(Approval.booking).joinedload(Booking.user))
         .join(Booking, Approval.booking_id == Booking.id)
-        .join(User, Booking.user_id == User.id)
         .filter(
-            Approval.manager_id == manager.id,
-            Approval.decision == ApprovalDecisionEnum.pending
+            Approval.decision == ApprovalDecisionEnum.pending,
+            Booking.status == BookingStatusEnum.pending,
         )
-        .all()
     )
+    if manager.role != RoleEnum.admin:
+        query = query.filter(Approval.manager_id == manager.id)
+    return query.all()
+
+
+def get_approval_history(db: Session, manager: User):
+    """Returns past approval decisions. Admins see all; managers see their own."""
+    query = (
+        db.query(Approval)
+        .options(joinedload(Approval.booking).joinedload(Booking.user))
+        .filter(Approval.decision != ApprovalDecisionEnum.pending)
+    )
+    if manager.role != RoleEnum.admin:
+        query = query.filter(Approval.manager_id == manager.id)
+    return query.order_by(Approval.decided_at.desc()).all()
 
 
 def get_approval_by_id(db: Session, approval_id: int, manager: User) -> Approval:
-    approval = db.query(Approval).filter(Approval.id == approval_id).first()
+    approval = db.query(Approval).options(joinedload(Approval.booking).joinedload(Booking.user)).filter(Approval.id == approval_id).first()
     if not approval:
         raise BookingNotFoundError()
     if approval.manager_id != manager.id and manager.role != RoleEnum.admin:
@@ -36,7 +50,7 @@ def get_approval_by_id(db: Session, approval_id: int, manager: User) -> Approval
 def decide_approval(db: Session, approval_id: int, decision: ApprovalDecisionEnum, comment: str, manager: User) -> Approval:
     approval = get_approval_by_id(db, approval_id, manager)
 
-    # Guard: only the assigned manager can decide
+    # Guard: only the assigned manager (or admin) can decide
     if approval.manager_id != manager.id and manager.role != RoleEnum.admin:
         raise UnauthorizedAccessError()
 

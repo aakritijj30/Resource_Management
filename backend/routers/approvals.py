@@ -17,6 +17,15 @@ def get_queue(
     return get_pending_approvals(db, manager)
 
 
+@router.get("/history", response_model=List[ApprovalOut])
+def get_history(
+    db: Session = Depends(get_db),
+    manager: User = Depends(require_role(RoleEnum.manager, RoleEnum.admin))
+):
+    from services.approval_service import get_approval_history
+    return get_approval_history(db, manager)
+
+
 @router.get("/{approval_id}", response_model=ApprovalOut)
 def get_one(
     approval_id: int,

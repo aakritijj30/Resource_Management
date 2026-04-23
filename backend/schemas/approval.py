@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from models.approval import ApprovalDecisionEnum
+from schemas.booking import BookingOut
 
 
 class ApprovalCreate(BaseModel):
@@ -21,5 +22,6 @@ class ApprovalOut(BaseModel):
     comment: Optional[str]
     decided_at: Optional[datetime]
     created_at: datetime
+    booking: Optional[BookingOut] = None
 
     model_config = {"from_attributes": True}

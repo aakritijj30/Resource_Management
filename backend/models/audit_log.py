@@ -7,6 +7,7 @@ from utils.timezone import now_local_naive
 
 class AuditActionEnum(str, enum.Enum):
     booking_created = "booking_created"
+    booking_updated = "booking_updated"
     booking_cancelled = "booking_cancelled"
     booking_completed = "booking_completed"
     booking_approved = "booking_approved"
