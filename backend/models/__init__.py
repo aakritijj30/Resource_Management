@@ -6,6 +6,7 @@ from models.booking import Booking, BookingStatusEnum
 from models.approval import Approval, ApprovalDecisionEnum
 from models.maintenance_block import MaintenanceBlock
 from models.audit_log import AuditLog, AuditActionEnum
+from models.notification import Notification
 
 __all__ = [
     "Department", "User", "RoleEnum",
@@ -15,4 +16,5 @@ __all__ = [
     "Approval", "ApprovalDecisionEnum",
     "MaintenanceBlock",
     "AuditLog", "AuditActionEnum",
+    "Notification",
 ]

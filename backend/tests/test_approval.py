@@ -9,7 +9,7 @@ from models.booking import Booking, BookingStatusEnum
 from models.approval import Approval, ApprovalDecisionEnum
 from models.resource import Resource, ResourceTypeEnum
 from models.user import User, RoleEnum
-from services.approval_service import decide_approval
+from services.approval_service import decide_approval, get_pending_approvals
 from utils.exceptions import InvalidStateTransitionError, UnauthorizedAccessError
 
 
@@ -68,3 +68,13 @@ def test_reject_requires_comment(db):
     r, emp, mgr, b, ap = _setup(db)
     with pytest.raises(InvalidStateTransitionError):
         decide_approval(db, ap.id, ApprovalDecisionEnum.rejected, "", mgr)
+
+
+def test_cancelled_booking_is_not_returned_in_pending_queue(db):
+    r, emp, mgr, b, ap = _setup(db)
+    b.status = BookingStatusEnum.cancelled
+    db.commit()
+    db.refresh(b)
+
+    approvals = get_pending_approvals(db, mgr)
+    assert approvals == []

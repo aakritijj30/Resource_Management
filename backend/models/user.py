@@ -26,4 +26,5 @@ class User(Base):
     department = relationship("Department", back_populates="users", foreign_keys=[department_id])
     bookings = relationship("Booking", back_populates="user", foreign_keys="Booking.user_id")
     approvals = relationship("Approval", back_populates="manager", foreign_keys="Approval.manager_id")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
