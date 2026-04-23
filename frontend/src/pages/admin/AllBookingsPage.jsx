@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/Sidebar'
 import Navbar from '../../components/Navbar'
 import StatusBadge from '../../components/StatusBadge'
@@ -12,10 +13,13 @@ import { formatISTDateTime, formatISTTime } from '../../utils/time'
 const STATUSES = ['all', 'pending', 'approved', 'rejected', 'cancelled', 'completed']
 
 export default function AllBookingsPage() {
+  const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState('all')
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ['all-bookings'],
-    queryFn: () => api.get('/bookings').then(r => r.data)
+    queryFn: () => api.get('/bookings').then(r => r.data),
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   })
 
   const filtered = statusFilter === 'all' ? bookings : bookings.filter(b => b.status === statusFilter)
@@ -57,11 +61,13 @@ export default function AllBookingsPage() {
             <>
               <div className="grid gap-3 md:hidden">
                 {filtered.map(b => (
-                  <div key={b.id} className="card space-y-3">
+                  <button key={b.id} type="button" className="card space-y-3 text-left" onClick={() => navigate(`/manager/bookings/${b.id}`)}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-white">Booking #{b.id}</p>
-                        <p className="mt-1 text-xs text-white/40">User #{b.user_id} · Resource #{b.resource_id}</p>
+                        <p className="mt-1 text-xs text-white/40">
+                          {b.user?.full_name || `User #${b.user_id}`} · Resource #{b.resource_id}
+                        </p>
                       </div>
                       <StatusBadge status={b.status} />
                     </div>
@@ -75,7 +81,7 @@ export default function AllBookingsPage() {
                         <p className="mt-1">{formatISTTime(b.end_time)}</p>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
 
@@ -93,9 +99,9 @@ export default function AllBookingsPage() {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {filtered.map(b => (
-                      <tr key={b.id} className="transition-colors hover:bg-white/5">
+                      <tr key={b.id} className="cursor-pointer transition-colors hover:bg-white/5" onClick={() => navigate(`/manager/bookings/${b.id}`)}>
                         <td className="py-3 text-white/40">#{b.id}</td>
-                        <td className="py-3">User #{b.user_id}</td>
+                        <td className="py-3">{b.user?.full_name || `User #${b.user_id}`}</td>
                         <td className="py-3">Resource #{b.resource_id}</td>
                         <td className="py-3 text-white/60">{formatISTDateTime(b.start_time, false)}</td>
                         <td className="py-3 text-white/60">{formatISTTime(b.end_time)}</td>

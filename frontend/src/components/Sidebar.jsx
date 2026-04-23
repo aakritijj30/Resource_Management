@@ -9,12 +9,14 @@ const NAV_LINKS = {
     { label: 'My Bookings', to: '/employee/bookings',    icon: 'BK' },
   ],
   manager: [
+    { label: 'Dashboard',   to: '/manager/dashboard',   icon: 'DB' },
     { label: 'Approvals',   to: '/manager/approvals',    icon: 'AP' },
     { label: 'Dept Usage',  to: '/manager/dept-usage',   icon: 'DU' },
-    { label: 'My Bookings',  to: '/employee/bookings',    icon: 'BK' },
+    { label: 'My Bookings',  to: '/manager/bookings',     icon: 'BK' },
   ],
   admin: [
     { label: 'Dashboard',   to: '/admin',                icon: 'DB' },
+    { label: 'Approvals',   to: '/manager/approvals',    icon: 'AP' },
     { label: 'Resources',   to: '/admin/resources',      icon: 'RS' },
     { label: 'Policies',    to: '/admin/policies',       icon: 'PL' },
     { label: 'Maintenance', to: '/admin/maintenance',    icon: 'MN' },

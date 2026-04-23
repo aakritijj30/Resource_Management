@@ -14,6 +14,8 @@ import MyBookingsPage      from './pages/employee/MyBookingsPage'
 import BookingDetailPage   from './pages/employee/BookingDetailPage'
 
 // Manager pages
+import ManagerDashboardPage from './pages/manager/ManagerDashboardPage'
+import ManagerBookingDetailPage from './pages/manager/ManagerBookingDetailPage'
 import ApprovalQueuePage   from './pages/manager/ApprovalQueuePage'
 import ApprovalDetailPage  from './pages/manager/ApprovalDetailPage'
 import DeptUsagePage       from './pages/manager/DeptUsagePage'
@@ -30,7 +32,7 @@ function RoleRedirect() {
   const { user } = useAuth()
   if (!user) return <Navigate to="/" replace />
   if (user.role === 'admin')   return <Navigate to="/admin" replace />
-  if (user.role === 'manager') return <Navigate to="/manager/approvals" replace />
+  if (user.role === 'manager') return <Navigate to="/manager/dashboard" replace />
   return <Navigate to="/employee/dashboard" replace />
 }
 
@@ -56,6 +58,9 @@ export default function App() {
 
           {/* Manager routes */}
           <Route element={<ProtectedRoute allowedRoles={['manager', 'admin']} />}>
+            <Route path="/manager/dashboard"        element={<ManagerDashboardPage />} />
+            <Route path="/manager/bookings"         element={<ManagerDashboardPage />} />
+            <Route path="/manager/bookings/:id"     element={<ManagerBookingDetailPage />} />
             <Route path="/manager/approvals"        element={<ApprovalQueuePage />} />
             <Route path="/manager/approvals/:id"    element={<ApprovalDetailPage />} />
             <Route path="/manager/dept-usage"       element={<DeptUsagePage />} />

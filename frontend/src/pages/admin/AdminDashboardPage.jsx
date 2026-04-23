@@ -64,6 +64,7 @@ function BookingPreview({ booking, label }) {
 }
 
 export default function AdminDashboardPage() {
+  const navigate = useNavigate()
   const { data: report, isLoading: reportLoading } = useUsageReport()
   const { data: bookings = [], isLoading: bookingsLoading } = useBookings()
 
@@ -143,6 +144,32 @@ export default function AdminDashboardPage() {
               <Shortcut badge="MN" title="Maintenance" to="/admin/maintenance" subtitle="Schedule blocks and auto-handle affected bookings." />
               <Shortcut badge="RP" title="Reports" to="/admin/reports" subtitle="Track utilization and booking trends." />
             </div>
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/35">Approval review</h3>
+                <p className="mt-1 text-sm text-white/40">
+                  Open the shared approval queue to review pending bookings as an admin.
+                </p>
+              </div>
+              <span className="chip">Shared queue</span>
+            </div>
+
+            <button
+              type="button"
+              className="card flex items-center justify-between gap-4 text-left transition-all hover:-translate-y-0.5 hover:border-yellow-500/20"
+              onClick={() => navigate('/manager/approvals')}
+            >
+              <div>
+                <p className="text-base font-display font-semibold text-white">Review approvals</p>
+                <p className="mt-1 text-sm text-white/40">
+                  Managers and admins use the same queue, so you can approve or reject pending requests here too.
+                </p>
+              </div>
+              <span className="btn-primary whitespace-nowrap">Open queue</span>
+            </button>
           </section>
         </main>
       </div>

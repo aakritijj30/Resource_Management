@@ -21,7 +21,9 @@ export default function ApprovalDetailPage() {
   const { data: approval, isLoading: approvalLoading } = useQuery({
     queryKey: ['approvals', approvalId],
     queryFn: () => getApproval(approvalId).then((r) => r.data),
-    enabled: Number.isFinite(approvalId)
+    enabled: Number.isFinite(approvalId),
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   })
   const { data: booking, isLoading: bookingLoading } = useBooking(approval?.booking_id)
   const { data: resource } = useResource(booking?.resource_id)
@@ -30,8 +32,10 @@ export default function ApprovalDetailPage() {
     mutationFn: ({ decision }) => decideApproval(approvalId, { decision, comment }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['approvals'] })
-      qc.invalidateQueries({ queryKey: ['booking', approval?.booking_id] })
-      qc.invalidateQueries({ queryKey: ['audit', approval?.booking_id] })
+      qc.invalidateQueries({ queryKey: ['bookings'] })
+      qc.invalidateQueries({ queryKey: ['all-bookings'] })
+      qc.invalidateQueries({ queryKey: ['auditTrail'] })
+      qc.invalidateQueries({ queryKey: ['reports'] })
       navigate('/manager/approvals')
     },
     onError: (err) => setError(err)
@@ -50,6 +54,8 @@ export default function ApprovalDetailPage() {
   }
 
   if (!approval || !booking) return null
+
+  const isActionable = approval.decision === 'pending' && booking.status === 'pending'
 
   return (
     <div className="flex min-h-screen">
@@ -73,6 +79,11 @@ export default function ApprovalDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-white/5 rounded-xl p-3 md:col-span-2">
+                <p className="text-xs text-white/40 mb-1">Requested by</p>
+                <p className="font-medium">{booking.user?.full_name || 'Unknown user'}</p>
+                <p className="text-sm text-white/40">{booking.user?.email || 'Email not available'}</p>
+              </div>
               <div className="bg-white/5 rounded-xl p-3">
                 <p className="text-xs text-white/40 mb-1">Purpose</p>
                 <p className="font-medium">{booking.purpose}</p>
@@ -98,6 +109,13 @@ export default function ApprovalDetailPage() {
                 <p className="font-medium">{resource?.location || 'Not available'}</p>
               </div>
             </div>
+
+            {!isActionable && (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/75">
+                This booking is now <span className="font-semibold capitalize">{booking.status}</span>, so the approval
+                request is no longer actionable.
+              </div>
+            )}
           </div>
 
           <div className="card space-y-4">
@@ -119,7 +137,7 @@ export default function ApprovalDetailPage() {
               <button
                 id="btn-approve"
                 className="btn-primary flex-1"
-                disabled={decide.isPending}
+                disabled={decide.isPending || !isActionable}
                 onClick={() => decide.mutate({ decision: 'approved' })}
               >
                 Approve
@@ -127,7 +145,7 @@ export default function ApprovalDetailPage() {
               <button
                 id="btn-reject"
                 className="btn-danger flex-1"
-                disabled={decide.isPending || !comment.trim()}
+                disabled={decide.isPending || !comment.trim() || !isActionable}
                 onClick={() => decide.mutate({ decision: 'rejected' })}
               >
                 Reject

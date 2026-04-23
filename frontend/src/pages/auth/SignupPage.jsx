@@ -6,7 +6,9 @@ import ErrorMessage from '../../components/ErrorMessage'
 import PublicNav from '../../components/PublicNav'
 
 const DEBOUNCE_MS = 350
-const EMAIL_DOMAIN = '@company.com'
+const EMAIL_DOMAIN = '@relanto.ai'
+const EMAIL_REGEX = /^[a-z]+\.[a-z0-9]+@relanto\.ai$/
+const PASS_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{}|;:,.<>?/]).{8,}$/
 
 const SELECT_CLS =
   "input appearance-none bg-no-repeat pr-10 " +
@@ -26,12 +28,13 @@ export default function SignupPage() {
     manager_secret_key: '',
   })
 
+  const [showPassword, setShowPassword] = useState(false)
   const [departments, setDepartments] = useState([])
   const [deptsLoading, setDeptsLoading] = useState(true)
 
   const [checking, setChecking] = useState(false)
   const [emailAvailable, setEmailAvailable] = useState(null)
-  const [emailDomainError, setEmailDomainError] = useState(false)
+  const [emailFormatError, setEmailFormatError] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -44,19 +47,20 @@ export default function SignupPage() {
       .finally(() => setDeptsLoading(false))
   }, [])
 
-  // Email domain validation
+  // Email validation
   const handleEmailChange = (val) => {
-    setForm(f => ({ ...f, email: val }))
-    if (val && !val.endsWith(EMAIL_DOMAIN)) {
-      setEmailDomainError(true)
+    const lower = val.toLowerCase()
+    setForm(f => ({ ...f, email: lower }))
+    if (lower && !EMAIL_REGEX.test(lower)) {
+      setEmailFormatError(true)
     } else {
-      setEmailDomainError(false)
+      setEmailFormatError(false)
     }
   }
 
-  // Check availability (debounced, only if domain is valid)
+  // Check availability
   useEffect(() => {
-    if (!form.email || emailDomainError) {
+    if (!form.email || emailFormatError) {
       setEmailAvailable(null)
       return
     }
@@ -74,19 +78,28 @@ export default function SignupPage() {
     }, DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [form.email, emailDomainError])
+  }, [form.email, emailFormatError])
+
+  const validatePassword = (pass) => {
+    return PASS_REGEX.test(pass)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitError(null)
 
-    if (emailDomainError || !form.email.endsWith(EMAIL_DOMAIN)) {
-      setSubmitError(new Error(`Email must end with ${EMAIL_DOMAIN}`))
+    if (emailFormatError) {
+      setSubmitError(new Error('Email must follow the pattern name.name1@relanto.ai'))
+      return
+    }
+
+    if (!validatePassword(form.password)) {
+      setSubmitError(new Error('Password must be 8+ chars with uppercase, lowercase, number, and special char.'))
       return
     }
 
     if (emailAvailable === false) {
-      setSubmitError(new Error('This email already exists. Please sign in instead.'))
+      setSubmitError(new Error('This email already exists.'))
       return
     }
 
@@ -114,17 +127,17 @@ export default function SignupPage() {
     }
   }
 
-  const emailStatusMsg = emailDomainError
-    ? `Email must end with ${EMAIL_DOMAIN}`
+  const emailStatusMsg = emailFormatError
+    ? 'Pattern must be name.name1@relanto.ai'
     : checking
       ? 'Checking availability...'
       : emailAvailable === false
-        ? 'This email already has an account.'
+        ? 'Account already exists.'
         : emailAvailable === true
-          ? 'Email is available.'
-          : `Use your company email (e.g. name${EMAIL_DOMAIN})`
+          ? 'Email is valid and available.'
+          : 'Use name.name1@relanto.ai'
 
-  const emailStatusColor = emailDomainError || emailAvailable === false
+  const emailStatusColor = emailFormatError || emailAvailable === false
     ? 'text-rose-600'
     : emailAvailable === true
       ? 'text-emerald-600'
@@ -187,16 +200,16 @@ export default function SignupPage() {
                 />
               </div>
 
-              {/* Email with @company.com validation */}
+              {/* Email with validation */}
               <div>
                 <label className="label" htmlFor="signup-email">Email</label>
                 <input
                   id="signup-email"
                   type="email"
-                  className={`input ${emailDomainError ? 'border-rose-400 focus:ring-rose-300' : ''}`}
+                  className={`input ${emailFormatError ? 'border-rose-400 focus:ring-rose-300' : ''}`}
                   value={form.email}
                   onChange={e => handleEmailChange(e.target.value)}
-                  placeholder={`name${EMAIL_DOMAIN}`}
+                  placeholder="name.name1@relanto.ai"
                   required
                 />
                 <div className="mt-2 flex items-center justify-between text-xs">
@@ -207,16 +220,36 @@ export default function SignupPage() {
               {/* Password */}
               <div>
                 <label className="label" htmlFor="password">Password</label>
-                <input
-                  id="password"
-                  type="password"
-                  className="input"
-                  value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  placeholder="Min. 8 characters"
-                  minLength={6}
-                  required
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    className="input pr-12"
+                    value={form.password}
+                    onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                    placeholder="Strong password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[10px] text-slate-400">
+                  8+ chars, uppercase, lowercase, number & special character.
+                </p>
               </div>
 
               {/* Role */}

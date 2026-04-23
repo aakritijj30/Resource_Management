@@ -8,6 +8,8 @@ import { useBookings } from '../../hooks/useBookings'
 import { useAuth } from '../../hooks/useAuth'
 import { useResource } from '../../hooks/useResources'
 import { formatISTDate, formatISTDateTime, formatISTTime, isAfterNowIST } from '../../utils/time'
+import { usePriorityAlert } from '../../hooks/useNotifications'
+import PriorityAlertModal from '../../components/PriorityAlertModal'
 
 function StatCard({ label, value, hint, active, onClick }) {
   return (
@@ -56,12 +58,22 @@ function BookingLine({ booking, active, onClick }) {
   )
 }
 
+
+
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { data: bookings = [], isLoading } = useBookings()
-  const [selectedFilter, setSelectedFilter] = useState(null)
+  const [selectedFilter, setSelectedFilter] = useState('upcoming')
   const [selectedId, setSelectedId] = useState(null)
+  const priorityAlert = usePriorityAlert()
+  const [showAlert, setShowAlert] = useState(false)
+
+  useEffect(() => {
+    if (priorityAlert) {
+      setShowAlert(true)
+    }
+  }, [priorityAlert])
 
   const upcoming = useMemo(
     () => bookings.filter(booking => booking.status === 'approved' && isAfterNowIST(booking.start_time)),
@@ -284,6 +296,12 @@ export default function DashboardPage() {
           ) : null}
         </main>
       </div>
+      {showAlert && (
+        <PriorityAlertModal 
+          alert={priorityAlert} 
+          onClose={() => setShowAlert(false)} 
+        />
+      )}
     </div>
   )
 }

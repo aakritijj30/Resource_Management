@@ -11,7 +11,9 @@ export default function ApprovalQueuePage() {
   const navigate = useNavigate()
   const { data: approvals = [], isLoading } = useQuery({
     queryKey: ['approvals', 'queue'],
-    queryFn: () => getApprovalQueue().then(r => r.data)
+    queryFn: () => getApprovalQueue().then(r => r.data),
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   })
 
   return (
@@ -50,7 +52,12 @@ export default function ApprovalQueuePage() {
                       {String(a.booking_id).slice(-2)}
                     </div>
                     <div>
-                      <p className="text-base font-display font-semibold text-white">Booking #{a.booking_id}</p>
+                      <p className="text-base font-display font-semibold text-white">
+                        {a.booking?.user?.full_name || `Booking #${a.booking_id}`}
+                      </p>
+                      <p className="mt-1 text-sm text-white/40">
+                        {a.booking?.purpose || 'Pending approval request'}
+                      </p>
                       <p className="mt-1 text-xs text-white/40">
                         Submitted {formatISTDateTime(a.created_at, false)}
                       </p>

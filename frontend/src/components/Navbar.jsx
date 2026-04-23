@@ -1,4 +1,5 @@
 import { useAuth } from '../hooks/useAuth'
+import NotificationCenter from './NotificationCenter'
 
 export default function Navbar({ title }) {
   const { user, logout } = useAuth()
@@ -9,6 +10,7 @@ export default function Navbar({ title }) {
         <h2 className="mt-1 font-display text-lg font-semibold text-slate-900">{title}</h2>
       </div>
       <div className="flex items-center gap-3">
+        <NotificationCenter />
         <span className="chip capitalize">{user?.role}</span>
         <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 md:flex">
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.35)]" />

@@ -10,13 +10,13 @@ import { useResources, useCreateResource, useDeactivateResource } from '../../ho
 const TYPES = ['conference_room', 'equipment', 'vehicle', 'lab', 'other']
 
 export default function ResourceManagePage() {
-  const { data: resources = [], isLoading } = useResources({ active_only: false })
+  const { data: resources = [], isLoading, error: resourcesError } = useResources({ active_only: false })
   const createResource = useCreateResource()
   const deactivateResource = useDeactivateResource()
 
   const [showForm, setShowForm] = useState(false)
   const [deactivateId, setDeactivateId] = useState(null)
-  const [error, setError] = useState(null)
+  const [formError, setFormError] = useState(null)
   const [form, setForm] = useState({
     name: '',
     type: 'conference_room',
@@ -27,14 +27,14 @@ export default function ResourceManagePage() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    setError(null)
+    setFormError(null)
 
     try {
       await createResource.mutateAsync({ ...form, capacity: parseInt(form.capacity) })
       setShowForm(false)
       setForm({ name: '', type: 'conference_room', capacity: 1, location: '', approval_required: false })
     } catch (err) {
-      setError(err)
+      setFormError(err)
     }
   }
 
@@ -100,7 +100,7 @@ export default function ResourceManagePage() {
                 <span className="text-sm text-white/70">Requires manager approval</span>
               </label>
 
-              <ErrorMessage error={error} />
+              <ErrorMessage error={formError} />
 
               <button type="submit" className="btn-primary" disabled={createResource.isPending} id="btn-submit-resource">
                 {createResource.isPending ? 'Creating...' : 'Create resource'}
@@ -108,7 +108,11 @@ export default function ResourceManagePage() {
             </form>
           )}
 
-          {isLoading ? (
+          {resourcesError ? (
+            <div className="section-shell">
+              <ErrorMessage error={resourcesError} />
+            </div>
+          ) : isLoading ? (
             <LoadingSpinner />
           ) : resources.length === 0 ? (
             <EmptyState icon="RS" title="No resources" description="Add your first resource above." />
