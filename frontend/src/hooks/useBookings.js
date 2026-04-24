@@ -1,10 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getBookings, getBooking, createBooking, cancelBooking, getAuditTrail } from '../api/bookingApi';
+import { getBookings, getBooking, createBooking, cancelBooking, getAuditTrail, getDepartmentBookings } from '../api/bookingApi';
 
 export function useBookings(params) {
   return useQuery({
     queryKey: ['bookings', params],
     queryFn: () => getBookings(params).then(res => res.data),
+  });
+}
+
+export function useDepartmentBookings(params) {
+  return useQuery({
+    queryKey: ['bookings', 'department', params],
+    queryFn: () => getDepartmentBookings(params).then(res => res.data),
   });
 }
 

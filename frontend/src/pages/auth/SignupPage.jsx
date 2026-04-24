@@ -4,7 +4,7 @@ import { checkEmail, getDepartments } from '../../api/authApi';
 import { useAuth } from '../../hooks/useAuth';
 import ErrorMessage from '../../components/ErrorMessage';
 import { motion } from 'framer-motion';
-import { UserPlus, ArrowLeft } from 'lucide-react';
+import { UserPlus, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import BackgroundVideo from '../../components/layout/BackgroundVideo';
 
 const DEBOUNCE_MS = 350;
@@ -37,6 +37,8 @@ export default function SignupPage() {
   const [submitError, setSubmitError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
 
   useEffect(() => {
     getDepartments()
@@ -105,7 +107,7 @@ export default function SignupPage() {
         manager_secret_key: form.role === 'manager' ? form.manager_secret_key : null,
       });
       setSuccess(true);
-      setTimeout(() => navigate(`/${userData.role}/dashboard`), 600);
+      setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
       setSubmitError(err);
     } finally {
@@ -196,17 +198,24 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div>
+            <div className="relative">
               <input
                 id="password"
-                type="password"
-                className="input text-center rounded-full"
+                type={showPassword ? "text" : "password"}
+                className="input text-center rounded-full pr-12"
                 value={form.password}
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 placeholder="Password (Min. 8 chars)"
                 minLength={6}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-surface-400 hover:text-primary-600 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -240,16 +249,24 @@ export default function SignupPage() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
+                className="relative"
               >
                 <input
                   id="manager_secret_key"
-                  type="password"
-                  className="input text-center rounded-full mt-1"
+                  type={showSecret ? "text" : "password"}
+                  className="input text-center rounded-full mt-1 pr-12"
                   value={form.manager_secret_key}
                   onChange={e => setForm(f => ({ ...f, manager_secret_key: e.target.value }))}
                   placeholder="Manager Secret Key"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowSecret(!showSecret)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-surface-400 hover:text-primary-600 transition-colors mt-0.5"
+                >
+                  {showSecret ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </motion.div>
             )}
 

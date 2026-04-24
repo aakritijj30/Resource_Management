@@ -4,14 +4,21 @@ import { getApprovalHistory } from '../../api/approvalApi';
 import { useNavigate } from 'react-router-dom';
 import { Clock, ArrowRight, Search, Filter, CheckCircle2, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import BookingSummary from '../../components/BookingSummary';
+import { useDepartmentBookings } from '../../hooks/useBookings';
 
-export default function ApprovalHistoryPage() {
+export default function EmployeeApprovalsPage() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all'); // all, pending, approved, rejected
-  const { data: approvals = [], isLoading } = useQuery({
+  
+  const { data: approvals = [], isLoading: isApprovalsLoading } = useQuery({
     queryKey: ['approvals', 'history'],
     queryFn: () => getApprovalHistory().then(r => r.data)
   });
+
+  const { data: teamBookings = [], isLoading: isTeamLoading } = useDepartmentBookings();
+
+  const isLoading = isApprovalsLoading || isTeamLoading;
 
   const filteredApprovals = approvals.filter(a => {
     if (filter === 'all') return true;
@@ -33,11 +40,20 @@ export default function ApprovalHistoryPage() {
     <div className="w-full flex-col flex animate-fade-in relative z-10 pb-12">
       <section className="page-header-card space-y-4">
         <div className="page-kicker">Manager Workspace</div>
-        <h1 className="page-title">Approval History</h1>
+        <h1 className="page-title">Employee Approvals</h1>
         <p className="page-copy">
-          View and audit all past and present resource requests within your department.
+          Audit past decisions and track current department activity in one place.
         </p>
       </section>
+
+      {/* Team Status Summary */}
+      <div className="mb-8">
+        <BookingSummary
+          bookings={teamBookings}
+          title="Department Activity"
+          subtitle="Real-time overview of all resource requests in your department."
+        />
+      </div>
 
       <div className="card">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">

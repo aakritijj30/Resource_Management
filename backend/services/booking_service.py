@@ -294,16 +294,23 @@ def get_department_bookings(db: Session, manager: User, skip: int = 0, limit: in
     refresh_completed_bookings(db)
     if not manager.department_id:
         return []
-    return (
+    results = (
         db.query(Booking)
-        .options(joinedload(Booking.user), joinedload(Booking.approval))
+        .options(joinedload(Booking.user), joinedload(Booking.resource), joinedload(Booking.approval))
         .join(User, Booking.user_id == User.id)
         .filter(User.department_id == manager.department_id)
+        .filter(Booking.user_id != manager.id)  # Exclude manager's own bookings
         .order_by(Booking.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
+
+    for b in results:
+        b.user_name = b.user.full_name if b.user else f"User #{b.user_id}"
+        b.resource_name = b.resource.name if b.resource else f"Resource #{b.resource_id}"
+    
+    return results
 
 
 def get_booking_by_id(db: Session, booking_id: int, current_user: User) -> Booking:

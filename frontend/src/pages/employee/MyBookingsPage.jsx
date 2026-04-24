@@ -11,7 +11,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function MyBookingsPage() {
   const navigate = useNavigate();
-  const { data: bookings = [], isLoading } = useBookings();
+  const { data: bookings = [], isLoading } = useBookings({ mine_only: true });
   const cancelBooking = useCancelBooking();
   const [cancelId, setCancelId] = useState(null);
 

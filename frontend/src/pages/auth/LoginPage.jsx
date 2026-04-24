@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import ErrorMessage from '../../components/ErrorMessage';
 import { motion } from 'framer-motion';
-import { LogIn, ArrowLeft } from 'lucide-react';
+import { LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import BackgroundVideo from '../../components/layout/BackgroundVideo';
 
 export default function LoginPage() {
@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,16 +88,23 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
+            <div className="relative">
               <input
                 id="password"
-                type="password"
-                className="input text-center rounded-full"
+                type={showPassword ? "text" : "password"}
+                className="input text-center rounded-full pr-12"
                 placeholder="Password"
                 value={form.password}
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-surface-400 hover:text-primary-600 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
             {error && (

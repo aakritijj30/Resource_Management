@@ -10,8 +10,8 @@ const NAV_LINKS = {
   ],
   manager: [
     { label: 'Dashboard',   to: '/manager/approvals',    icon: 'DB' },
-    { label: 'Approval History', to: '/manager/pending-approvals', icon: 'PA' },
-    { label: 'My Booking',  to: '/employee/resources',   icon: 'BK' },
+    { label: 'Employee Approvals', to: '/manager/pending-approvals', icon: 'EA' },
+    { label: 'My Bookings',    to: '/employee/bookings',         icon: 'BK' },
   ],
   admin: [
     { label: 'Dashboard',   to: '/admin',                icon: 'DB' },

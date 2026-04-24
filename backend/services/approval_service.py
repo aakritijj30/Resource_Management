@@ -14,7 +14,7 @@ def get_pending_approvals(db: Session, manager: User):
     """Returns pending approvals. Admins see all; managers see only their department's."""
     query = (
         db.query(Approval)
-        .options(joinedload(Approval.booking).joinedload(Booking.user))
+        .options(joinedload(Approval.booking).joinedload(Booking.user), joinedload(Approval.booking).joinedload(Booking.resource))
         .join(Booking, Approval.booking_id == Booking.id)
         .filter(
             Approval.decision == ApprovalDecisionEnum.pending,
@@ -23,29 +23,45 @@ def get_pending_approvals(db: Session, manager: User):
     )
     if manager.role != RoleEnum.admin:
         query = query.filter(Approval.manager_id == manager.id)
-    return query.all()
+    
+    approvals = query.all()
+    for a in approvals:
+        a.user_name = a.booking.user.full_name if a.booking.user else f"User #{a.booking.user_id}"
+        a.resource_id = a.booking.resource_id
+        a.resource_name = a.booking.resource.name if a.booking.resource else f"Resource #{a.booking.resource_id}"
+    return approvals
 
 
 def get_approval_history(db: Session, manager: User):
     """Returns past approval decisions. Admins see all; managers see their own."""
     query = (
         db.query(Approval)
-        .options(joinedload(Approval.booking).joinedload(Booking.user))
+        .options(joinedload(Approval.booking).joinedload(Booking.user), joinedload(Approval.booking).joinedload(Booking.resource))
         .filter(Approval.decision != ApprovalDecisionEnum.pending)
     )
     if manager.role != RoleEnum.admin:
         query = query.filter(Approval.manager_id == manager.id)
-    return query.order_by(Approval.decided_at.desc()).all()
+    
+    approvals = query.order_by(Approval.decided_at.desc()).all()
+    for a in approvals:
+        a.user_name = a.booking.user.full_name if a.booking.user else f"User #{a.booking.user_id}"
+        a.resource_id = a.booking.resource_id
+        a.resource_name = a.booking.resource.name if a.booking.resource else f"Resource #{a.booking.resource_id}"
+    return approvals
 
 
 def get_approval_by_id(db: Session, approval_id: int, manager: User) -> Approval:
-    approval = db.query(Approval).options(joinedload(Approval.booking).joinedload(Booking.user)).filter(Approval.id == approval_id).first()
+    approval = db.query(Approval).options(
+        joinedload(Approval.booking).joinedload(Booking.user),
+        joinedload(Approval.booking).joinedload(Booking.resource)
+    ).filter(Approval.id == approval_id).first()
     if not approval:
         raise BookingNotFoundError()
     if approval.manager_id != manager.id and manager.role != RoleEnum.admin:
         raise UnauthorizedAccessError()
     
     approval.user_name = approval.booking.user.full_name if approval.booking.user else f"User #{approval.booking.user_id}"
+    approval.resource_id = approval.booking.resource_id
     approval.resource_name = approval.booking.resource.name if approval.booking.resource else f"Resource #{approval.booking.resource_id}"
     
     return approval
