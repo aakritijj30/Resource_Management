@@ -16,6 +16,7 @@ class ApprovalNested(BaseModel):
     id: int
     decision: str
     manager_id: Optional[int] = None
+    comment: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
