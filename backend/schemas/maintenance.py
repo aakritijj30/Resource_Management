@@ -12,6 +12,7 @@ class MaintenanceCreate(BaseModel):
 class MaintenanceOut(BaseModel):
     id: int
     resource_id: int
+    resource_name: str | None = None
     start_time: datetime
     end_time: datetime
     reason: str

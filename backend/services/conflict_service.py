@@ -17,7 +17,13 @@ def check_maintenance_block(db: Session, resource_id: int, start_time: datetime,
     ).first()
     
     if overlap:
-        raise HTTPException(status_code=409, detail=f"Resource is blocked for maintenance: {overlap.reason}")
+        resource_name = overlap.resource.name if overlap.resource else f"Resource #{resource_id}"
+        time_fmt = "%Y-%m-%d %H:%M"
+        interval = f"{overlap.start_time.strftime(time_fmt)} to {overlap.end_time.strftime(time_fmt)}"
+        raise HTTPException(
+            status_code=409, 
+            detail=f"Maintenance Alert: '{resource_name}' is unavailable from {interval}. Reason: {overlap.reason}"
+        )
 
 def check_booking_conflict(db: Session, resource_id: int, start_time: datetime, end_time: datetime, exclude_booking_id: int = None):
     """Step 4: Booking conflict check -> raises if new_start < exist_end AND new_end > exist_start."""

@@ -7,6 +7,7 @@ import HeroSection from '../../components/dashboard/HeroSection';
 import DeptUsageWidget from '../../components/dashboard/DeptUsageWidget';
 import { motion } from 'framer-motion';
 import { Clock, ArrowRight } from 'lucide-react';
+import MaintenancePanel from '../../components/dashboard/MaintenancePanel';
 
 export default function ApprovalQueuePage() {
   const navigate = useNavigate();
@@ -18,7 +19,9 @@ export default function ApprovalQueuePage() {
   return (
     <div className="w-full flex-col flex animate-fade-in relative z-10">
       <HeroSection />
-
+      <div className="my-8">
+        <MaintenancePanel />
+      </div>
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] items-start">
         <DeptUsageWidget />
 

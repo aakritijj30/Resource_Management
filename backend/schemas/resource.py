@@ -38,4 +38,5 @@ class ResourceOut(BaseModel):
     is_active: bool
     department_id: Optional[int] = None
 
+
     model_config = {"from_attributes": True}

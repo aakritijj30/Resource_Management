@@ -1,5 +1,6 @@
 """
-Mandatory seed script that ensures admin, departments, and resources exist.
+Production-ready seed script for the Enterprise Booking System.
+Ensures a clean slate, resets all sequences, and seeds core data.
 Usage: python backend/database/seed.py
 """
 import os
@@ -20,13 +21,11 @@ from models.user import RoleEnum, User
 from services.auth_service import hash_password
 
 def clear_db(db: Session):
-    """
-    Part 1: The Clean Slate
-    Clears users, resources, and departments to ensure a fresh start.
-    """
-    print("Part 1: The Clean Slate - Clearing ALL data (Users, Resources, Departments)...")
+    """Clears ALL data and RESTART sequences."""
+    print("Part 1: The Clean Slate - Clearing ALL data and resetting IDs...")
     try:
         # PostgreSQL specific truncate with cascade and identity reset
+        # This ensures that ID 1 is always the next ID used.
         db.execute(text("TRUNCATE TABLE audit_logs, notifications, approvals, maintenance_blocks, bookings, resource_policies, resources, users, departments RESTART IDENTITY CASCADE"))
         db.commit()
     except Exception as e:
@@ -34,14 +33,12 @@ def clear_db(db: Session):
         db.rollback()
 
 def seed_users(db: Session):
-    """
-    Seed exactly three users as requested.
-    """
-    print("Seeding specific user accounts...")
+    """Seed core user accounts."""
+    print("Part 2: Seeding User Accounts (Admin, Manager, Employee)...")
     users_data = [
-        {"id": 1, "email": "admin@company.com", "name": "System Admin", "role": RoleEnum.admin, "pass": "admin123"},
-        {"id": 2, "email": "manager_dt@company.com", "name": "Alice", "role": RoleEnum.manager, "pass": "manager123"},
-        {"id": 3, "email": "emp1@company.com", "name": "Aakriti", "role": RoleEnum.employee, "pass": "employee123"},
+        {"id": 1, "email": "admin@company.com", "full_name": "System Admin", "role": RoleEnum.admin, "password": "admin123"},
+        {"id": 2, "email": "manager@company.com", "full_name": "Alice Manager", "role": RoleEnum.manager, "password": "manager123"},
+        {"id": 3, "email": "emp1@company.com", "full_name": "Aakriti Employee", "role": RoleEnum.employee, "password": "employee123"},
     ]
     
     for u in users_data:
@@ -49,138 +46,144 @@ def seed_users(db: Session):
             "INSERT INTO users (id, email, full_name, hashed_password, role, is_active, created_at) "
             "VALUES (:id, :email, :name, :pass, :role, True, :created)"
         ), {
-            "id": u["id"], "email": u["email"], "name": u["name"], 
-            "pass": hash_password(u["pass"]), "role": u["role"], 
-            "created": datetime.utcnow()
+            "id": u["id"], "email": u["email"], "name": u["full_name"], 
+            "pass": hash_password(u["password"]), "role": u["role"].value, 
+            "created": datetime.now()
         })
-    
     db.commit()
 
-def seed_mandatory():
+def seed_departments(db: Session):
+    """Seed department hierarchy."""
+    print("Part 3: Seeding Departments...")
+    depts_data = [
+        {"id": 1, "name": "Data and AI", "manager_id": None},
+        {"id": 2, "name": "Salesforce", "manager_id": None},
+        {"id": 3, "name": "AI First Labs", "manager_id": None},
+        {"id": 4, "name": "Planning", "manager_id": None},
+        {"id": 5, "name": "Digital Transformation", "manager_id": 2}, # Alice is manager
+    ]
+    
+    for d in depts_data:
+        dept = Department(
+            id=d["id"],
+            name=d["name"],
+            manager_id=d["manager_id"],
+            created_at=datetime.now()
+        )
+        db.add(dept)
+    db.flush()
+    
+    # Update seeded users to belong to 'Digital Transformation' (ID 5)
+    db.execute(text("UPDATE users SET department_id = 5 WHERE id IN (2, 3)"))
+    db.commit()
+
+def seed_resources(db: Session):
+    """Seed resources and policies."""
+    print("Part 4: Seeding Managed Resources (Approval Required)...")
+    managed_resources = [
+        # (DeptID, Name, Type, Image)
+        (2, "Vijayanagara", ResourceTypeEnum.conference_room, "/rooms/croom2.webp"),
+        (2, "Wadeyars", ResourceTypeEnum.conference_room, "/rooms/room2"),
+        (3, "AI First Lab 1", ResourceTypeEnum.lab, "/rooms/ai_lab.png"),
+        (3, "Moksha Lab", ResourceTypeEnum.lab, "/rooms/moksha.jpg"),
+        (4, "Maurya Room", ResourceTypeEnum.conference_room, "/rooms/maurya.webp"),
+        (4, "Hoysala Room", ResourceTypeEnum.conference_room, "/rooms/croom1.webp"),
+        (5, "Ashoka Boardroom", ResourceTypeEnum.conference_room, "/rooms/ashoka.webp"),
+        (5, "Sahyadri Lounge", ResourceTypeEnum.conference_room, "/rooms/sahyadri.png"),
+        (1, "Nalanda Hub", ResourceTypeEnum.lab, "/rooms/nalanda.webp"),
+        (None, "Indus Common", ResourceTypeEnum.other, "/rooms/indus.webp"),
+        (None, "Ganga Common", ResourceTypeEnum.other, "/rooms/ganga.webp"),
+    ]
+
+    for dept_id, name, res_type, img in managed_resources:
+        res = Resource(
+            name=name,
+            type=res_type,
+            capacity=12,
+            approval_required=True,
+            department_id=dept_id,
+            image_url=img,
+            created_at=datetime.now()
+        )
+        db.add(res)
+        db.flush()
+        db.add(ResourcePolicy(
+            resource_id=res.id,
+            max_duration_hours=12,
+            office_hours_start=8,
+            office_hours_end=20,
+            max_attendees=12,
+            allowed_days=31, # Mon-Fri
+            allowed_department_ids=[dept_id] if dept_id else None
+        ))
+
+    print("Part 5: Seeding Auto-Approval Assets & PARKING...")
+    auto_assets = [
+        ("Bay Desk 1", ResourceTypeEnum.other, 1, "/rooms/bay.jpg"),
+        ("Bay Desk 2", ResourceTypeEnum.other, 1, "/rooms/bay.jpg"),
+        ("Bay Desk 3", ResourceTypeEnum.other, 1, "/rooms/bay.jpg"),
+        ("Standard Cubicle A", ResourceTypeEnum.other, 1, "/rooms/cubicle1.jpg"),
+        ("3D Printer Station", ResourceTypeEnum.equipment, 1, "/rooms/printer.png"),
+        # Parking slots with requested capacities
+        ("Parking Slot P1", ResourceTypeEnum.other, 10, "/rooms/parking.webp"),
+        ("Parking Slot P2", ResourceTypeEnum.other, 15, "/rooms/parking.webp"),
+        ("Parking Slot P3", ResourceTypeEnum.other, 20, "/rooms/parking.webp"),
+    ]
+
+    for name, res_type, cap, img in auto_assets:
+        res = Resource(
+            name=name,
+            type=res_type,
+            capacity=cap,
+            approval_required=False,
+            department_id=None,
+            image_url=img,
+            created_at=datetime.now()
+        )
+        db.add(res)
+        db.flush()
+        db.add(ResourcePolicy(
+            resource_id=res.id,
+            max_duration_hours=24,
+            office_hours_start=0,
+            office_hours_end=23,
+            max_attendees=cap,
+            allowed_days=127, # All days
+            allowed_department_ids=None
+        ))
+    db.commit()
+
+def sync_sequences(db: Session):
+    """Syncs PostgreSQL sequences so that future inserts don't fail."""
+    print("Part 6: Syncing Database Sequences...")
+    seq_commands = [
+        "SELECT setval('users_id_seq', (SELECT MAX(id) FROM users))",
+        "SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments))",
+        "SELECT setval('resources_id_seq', (SELECT MAX(id) FROM resources))",
+    ]
+    for cmd in seq_commands:
+        db.execute(text(cmd))
+    db.commit()
+
+def main():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
-
     try:
-        # Part 1: Clear EVERYTHING
         clear_db(db)
-        
-        # Part 2: Seed exact users
         seed_users(db)
-
-        # Part 3: Department Hierarchy
-        print("Part 3: Seeding Departments...")
-        depts_data = [
-            {"id": 2, "name": "Salesforce", "manager_id": None},
-            {"id": 3, "name": "AI First Labs", "manager_id": None},
-            {"id": 4, "name": "Planning", "manager_id": None},
-            {"id": 5, "name": "Digital Transformation", "manager_id": 2}, # Linked to manager_dt
-            {"id": 1, "name": "Data and AI", "manager_id": None},
-        ]
-        
-        for d in depts_data:
-            dept = Department(
-                id=d["id"],
-                name=d["name"],
-                manager_id=d["manager_id"],
-                created_at=datetime.utcnow()
-            )
-            db.add(dept)
-        db.flush()
-
-        # Update Users to link to Digital Transformation (ID 5)
-        db.execute(text("UPDATE users SET department_id = 5 WHERE id IN (2, 3)"))
-
-        # Part 4: Resource Seeding (Approval Required)
-        print("Part 4: Seeding Resources (Approval Required)...")
-        managed_resources = [
-            (2, ["Vijayanagara"], ResourceTypeEnum.conference_room, "/rooms/croom2.webp"),
-            (2, ["Wadeyars"], ResourceTypeEnum.conference_room, "/rooms/room2"),
-            (3, ["Ai first lab"], ResourceTypeEnum.lab, "/rooms/ai_lab.png"),
-            (3, ["Moksha"], ResourceTypeEnum.lab, "/rooms/moksha.jpg"),
-            (4, ["Maurya"], ResourceTypeEnum.conference_room, "/rooms/maurya.webp"),
-            (4, ["Hoysala"], ResourceTypeEnum.conference_room, "/rooms/croom1.webp"),
-            (5, ["Ashoka"], ResourceTypeEnum.conference_room, "/rooms/ashoka.webp"),
-            (5, ["Sahyadri"], ResourceTypeEnum.conference_room, "/rooms/sahyadri.png"),
-            (1, ["Nalanda"], ResourceTypeEnum.lab, "/rooms/nalanda.webp"),
-            (1, ["Mantra"], ResourceTypeEnum.lab, "/rooms/mantra.webp"),
-            (None, ["Indus"], ResourceTypeEnum.other, "/rooms/indus.webp"),
-            (None, ["Ganga"], ResourceTypeEnum.other, "/rooms/ganga.webp"),
-            (None, ["Kaveri"], ResourceTypeEnum.other, "/rooms/kaveri.png"),
-            (None, ["Kadamba"], ResourceTypeEnum.other, "/rooms/room6.webp"),
-            (None, ["IT storage 1"], ResourceTypeEnum.other, "/rooms/it_storage.png"),
-            (None, ["Server room 2"], ResourceTypeEnum.other, "/rooms/server.png")
-        ]
-
-        for dept_id, names, res_type, img_path in managed_resources:
-            for name in names:
-                res = Resource(
-                    name=name,
-                    type=res_type,
-                    capacity=10 if res_type != ResourceTypeEnum.other else 1,
-                    approval_required=True,
-                    department_id=dept_id,
-                    image_url=img_path,
-                    created_at=datetime.utcnow()
-                )
-                db.add(res)
-                db.flush()
-                db.add(ResourcePolicy(
-                    resource_id=res.id, 
-                    max_duration_hours=8, 
-                    office_hours_start=9, 
-                    office_hours_end=18,
-                    max_attendees=10 if res_type != ResourceTypeEnum.other else 1,
-                    allowed_days=31, # Mon-Fri
-                    allowed_department_ids=[dept_id] if dept_id else None
-                ))
-
-        # Part 5: Auto-Approval Assets
-        print("Part 5: Seeding Auto-Approval Assets...")
-        auto_assets = [
-            ([f"Bay Desk {i}" for i in range(1, 11)], ResourceTypeEnum.other, "/rooms/bay.jpg"),
-            (["Standard Cubicle A"], ResourceTypeEnum.other, "/rooms/cubicle1.jpg"),
-            (["Standard Cubicle B"], ResourceTypeEnum.other, "/rooms/cubicle2.jpg"),
-            (["3D Printer Station"], ResourceTypeEnum.equipment, "/rooms/printer.png"),
-            (["Parking Slot P1", "Parking Slot P2"], ResourceTypeEnum.other, "/rooms/parking.webp")
-        ]
-
-        for names, res_type, img_path in auto_assets:
-            for name in names:
-                res = Resource(
-                    name=name,
-                    type=res_type,
-                    capacity=1,
-                    approval_required=False,
-                    department_id=None,
-                    image_url=img_path,
-                    created_at=datetime.utcnow()
-                )
-                db.add(res)
-                db.flush()
-                db.add(ResourcePolicy(
-                    resource_id=res.id, 
-                    max_duration_hours=24, 
-                    office_hours_start=0, 
-                    office_hours_end=23,
-                    max_attendees=1,
-                    allowed_days=31, # Mon-Fri
-                    allowed_department_ids=None
-                ))
-
-        # Sync sequences for PostgreSQL so that new signups don't clash with seeded IDs
-        print("Finalizing: Syncing database sequences...")
-        db.execute(text("SELECT setval('users_id_seq', (SELECT MAX(id) FROM users))"))
-        db.execute(text("SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments))"))
-        db.execute(text("SELECT setval('resources_id_seq', (SELECT MAX(id) FROM resources))"))
-        
-        db.commit()
-        print("Database refresh completed! Ready for new signups.")
-
+        seed_departments(db)
+        seed_resources(db)
+        sync_sequences(db)
+        print("\nSUCCESS: Database seeded successfully!")
+        print("Accounts Created:")
+        print(" - Admin:    admin@company.com / admin123")
+        print(" - Manager:  manager@company.com / manager123")
+        print(" - Employee: emp1@company.com / employee123")
     except Exception as e:
-        print(f"Error during seeding: {e}")
+        print(f"\nFATAL ERROR: {e}")
         db.rollback()
     finally:
         db.close()
 
 if __name__ == "__main__":
-    seed_mandatory()
+    main()

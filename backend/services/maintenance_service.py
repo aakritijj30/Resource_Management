@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
 from models.maintenance_block import MaintenanceBlock
 from models.booking import Booking, BookingStatusEnum
@@ -9,7 +9,30 @@ from utils.helpers import validate_future_datetime, validate_time_range
 from utils.timezone import to_local_naive
 
 def get_maintenance_blocks(db: Session):
-    return db.query(MaintenanceBlock).order_by(MaintenanceBlock.start_time.desc()).all()
+    blocks = db.query(MaintenanceBlock).options(joinedload(MaintenanceBlock.resource)).order_by(MaintenanceBlock.start_time.desc()).all()
+    for b in blocks:
+        b.resource_name = b.resource.name if b.resource else f"Resource #{b.resource_id}"
+    return blocks
+
+def get_relevant_maintenance_blocks(db: Session, user_dept_id: int):
+    """Returns maintenance blocks for common resources or resources in the user's department."""
+    from models.resource import Resource
+    from utils.timezone import now_local_naive
+    
+    blocks = (
+        db.query(MaintenanceBlock)
+        .options(joinedload(MaintenanceBlock.resource))
+        .join(Resource)
+        .filter(
+            (Resource.department_id == None) | (Resource.department_id == user_dept_id),
+            MaintenanceBlock.end_time >= now_local_naive()
+        )
+        .order_by(MaintenanceBlock.start_time.asc())
+        .all()
+    )
+    for b in blocks:
+        b.resource_name = b.resource.name if b.resource else f"Resource #{b.resource_id}"
+    return blocks
 
 def create_maintenance_block(db: Session, data: MaintenanceCreate, admin_id: int):
     start_time = to_local_naive(data.start_time)
@@ -45,6 +68,7 @@ def create_maintenance_block(db: Session, data: MaintenanceCreate, admin_id: int
 
     db.commit()
     db.refresh(block)
+    block.resource_name = block.resource.name if block.resource else f"Resource #{block.resource_id}"
     return block
 
 def delete_maintenance_block(db: Session, block_id: int, admin_id: int):

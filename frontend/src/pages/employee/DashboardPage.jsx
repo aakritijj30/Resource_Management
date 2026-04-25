@@ -5,6 +5,7 @@ import HeroSection from '../../components/dashboard/HeroSection';
 import StatCards from '../../components/dashboard/StatCards';
 import TodayBookings from '../../components/dashboard/TodayBookings';
 import NotificationPanel from '../../components/dashboard/NotificationPanel';
+import MaintenancePanel from '../../components/dashboard/MaintenancePanel';
 import { useBookings } from '../../hooks/useBookings';
 
 export default function DashboardPage() {
@@ -55,6 +56,8 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-6 lg:sticky lg:top-6">
+           {/* Maintenance Panel */}
+           <MaintenancePanel />
            {/* Notification Panel */}
            <NotificationPanel bookings={bookings} />
         </div>

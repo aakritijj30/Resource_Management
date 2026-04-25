@@ -4,6 +4,7 @@ import StatCards from '../../components/dashboard/StatCards';
 import TodayBookings from '../../components/dashboard/TodayBookings';
 import { useUsageReport } from '../../hooks/useReports';
 import { motion } from 'framer-motion';
+import MaintenancePanel from '../../components/dashboard/MaintenancePanel';
 import { Shield, Settings, Wrench, BarChart2, CheckCircle2 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -31,6 +32,9 @@ export default function AdminDashboardPage() {
   return (
     <div className="w-full flex-col flex animate-fade-in relative z-10">
       <HeroSection onAddResource={() => navigate('/admin/resources')} />
+      <div className="mb-6">
+        <MaintenancePanel />
+      </div>
       <StatCards stats={STATS} />
 
       {/* Admin Shortcuts Layer */}

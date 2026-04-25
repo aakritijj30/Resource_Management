@@ -21,6 +21,20 @@ from datetime import datetime
 
 def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datetime, end_time: datetime, current_user: User, exclude_booking_id: int = None):
     """If manager/admin, preempt employee bookings. Otherwise raise conflict."""
+    # Get resource capacity
+    resource = db.query(Resource).filter(Resource.id == resource_id).first()
+    if not resource:
+        return
+
+    # Determine if this resource supports multiple concurrent bookings (Capacity-based)
+    # The user specifically requested this ONLY for parking slots.
+    is_parking = "parking" in (resource.name or "").lower()
+    
+    if is_parking:
+        # For parking, we skip the hard overlap check. 
+        # check_capacity() will handle the sum of concurrent bookings.
+        return
+
     if current_user.role not in [RoleEnum.manager, RoleEnum.admin]:
         check_booking_conflict(db, resource_id, start_time, end_time, exclude_booking_id)
         return
