@@ -1,7 +1,8 @@
 import enum
-from sqlalchemy import Column, Integer, String, Boolean, Enum, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Enum, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from database.connection import Base
+from utils.timezone import now_local_naive
 
 
 class ResourceTypeEnum(str, enum.Enum):
@@ -23,6 +24,7 @@ class Resource(Base):
     description = Column(Text, nullable=True)
     approval_required = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=now_local_naive)
     # NULL = shared/common resource visible to all; set to dept id for dept-specific
     department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
 

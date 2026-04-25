@@ -97,8 +97,8 @@ export default function ResourceListPage() {
           <div className="h-px w-full bg-surface-100" />
 
           {/* Search + Type filters row */}
-          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div className="max-w-md">
+          <div className="w-full">
+            <div className="max-w-xl">
               <label className="text-xs font-semibold text-surface-500 uppercase tracking-widest block mb-2" htmlFor="input-resource-search">Search</label>
               <input
                 id="input-resource-search"
@@ -107,23 +107,6 @@ export default function ResourceListPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
-            </div>
-
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              {ALL_TYPES.map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTypeFilter(t)}
-                  className={clsx(
-                    'rounded-full border px-4 py-2 text-sm font-medium transition-all',
-                    typeFilter === t
-                      ? 'border-primary-200 bg-primary-50 text-primary-700 shadow-sm'
-                      : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 hover:text-surface-900'
-                  )}
-                >
-                  {t === 'all' ? 'All types' : TYPE_META[t].label}
-                </button>
-              ))}
             </div>
           </div>
         </div>
