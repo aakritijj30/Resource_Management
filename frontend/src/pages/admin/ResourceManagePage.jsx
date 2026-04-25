@@ -5,22 +5,40 @@ import ConfirmModal from '../../components/ConfirmModal';
 import ErrorMessage from '../../components/ErrorMessage';
 import { useResources, useCreateResource, useDeactivateResource } from '../../hooks/useResources';
 
+import { useQuery } from '@tanstack/react-query';
+import { getDepartments } from '../../api/departmentApi';
+import { LayoutGrid, ChevronDown } from 'lucide-react';
+
 const TYPES = ['conference_room', 'equipment', 'vehicle', 'lab', 'other'];
 
 export default function ResourceManagePage() {
   const { data: resources = [], isLoading } = useResources({ active_only: false });
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => getDepartments().then(r => r.data)
+  });
+
   const createResource = useCreateResource();
   const deactivateResource = useDeactivateResource();
 
   const [showForm, setShowForm] = useState(false);
   const [deactivateId, setDeactivateId] = useState(null);
   const [error, setError] = useState(null);
+  const [scopeFilter, setScopeFilter] = useState('all');
   const [form, setForm] = useState({
     name: '',
     type: 'conference_room',
     capacity: 1,
     location: '',
     approval_required: false,
+    image_url: '',
+    department_id: null
+  });
+
+  const filtered = resources.filter(r => {
+    if (scopeFilter === 'common') return r.department_id === null;
+    if (scopeFilter !== 'all') return r.department_id === scopeFilter;
+    return true;
   });
 
   const handleCreate = async (e) => {
@@ -61,6 +79,29 @@ export default function ResourceManagePage() {
         </div>
       </section>
 
+      {/* Admin Scope Filter */}
+      <div className="card mb-8 bg-white/80 backdrop-blur-md border-surface-200/60 shadow-xl shadow-surface-900/5">
+        <div className="space-y-3">
+          <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest flex items-center gap-2">
+            <LayoutGrid size={12} /> Filter Resources by Department
+          </p>
+          <div className="relative w-full max-w-sm">
+            <select
+              value={scopeFilter}
+              onChange={(e) => setScopeFilter(e.target.value === 'all' || e.target.value === 'common' ? e.target.value : parseInt(e.target.value))}
+              className="w-full appearance-none bg-surface-50 border border-surface-200 text-surface-900 text-sm rounded-xl px-4 py-3 pr-10 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none font-medium cursor-pointer hover:bg-white"
+            >
+              <option value="all">All Resources (Org-Wide)</option>
+              <option value="common">Common Resources (No Dept)</option>
+              {departments.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
       {showForm && (
         <form onSubmit={handleCreate} className="card p-6 sm:p-8 space-y-6 animate-slide-in mb-8 border border-primary-200 bg-primary-50/30">
           <div className="flex items-center justify-between gap-4 border-b border-surface-200 pb-5">
@@ -90,6 +131,22 @@ export default function ResourceManagePage() {
               <label className="text-xs font-semibold text-surface-500 uppercase tracking-widest block mb-2">Location</label>
               <input className="input bg-white border-surface-200 text-surface-900 rounded-xl" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} />
             </div>
+            <div>
+              <label className="text-xs font-semibold text-surface-500 uppercase tracking-widest block mb-2">Department Ownership</label>
+              <select 
+                className="input bg-white border-surface-200 text-surface-900 rounded-xl" 
+                value={form.department_id || ''} 
+                onChange={e => setForm(f => ({ ...f, department_id: e.target.value === '' ? null : parseInt(e.target.value) }))}
+              >
+                <option value="">Common Resource (Shared)</option>
+                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-surface-500 uppercase tracking-widest block mb-2">Image URL</label>
+              <input className="input bg-white border-surface-200 text-surface-900 rounded-xl" placeholder="/rooms/example.jpg" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} />
+              <p className="text-[10px] text-surface-400 mt-1 font-medium italic">Hint: Use paths like <strong>/rooms/room8.webp</strong> for local assets.</p>
+            </div>
           </div>
 
           <label className="flex items-center gap-3 rounded-xl border border-surface-200 bg-white px-4 py-3 cursor-pointer shadow-sm hover:border-primary-200 transition-colors w-fit">
@@ -116,28 +173,37 @@ export default function ResourceManagePage() {
         <div className="w-full flex justify-center py-20">
           <LoadingSpinner />
         </div>
-      ) : resources.length === 0 ? (
-        <EmptyState icon="RS" title="No resources" description="Add your first resource above." />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon="RS" title="No resources" description="No resources match the current filter." />
       ) : (
         <div className="grid gap-4">
-          {resources.map(r => (
-            <div key={r.id} className="card p-5 xl:p-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between border border-surface-200 hover:border-primary-200/60 transition-all hover:shadow-glow bg-white">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <p className="font-display text-lg font-bold text-surface-900 leading-tight">{r.name}</p>
-                  {!r.is_active && <span className="chip border-rose-200 bg-rose-50 text-rose-700 text-[10px]">Inactive</span>}
+          {filtered.map(r => (
+            <div key={r.id} className="card p-3 xl:p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between border border-surface-200 hover:border-primary-200/60 transition-all hover:shadow-glow bg-white">
+              <div className="flex items-center gap-4">
+                <div className="h-20 w-28 rounded-xl overflow-hidden bg-surface-50 border border-surface-100 flex-shrink-0">
+                  {r.image_url ? (
+                    <img src={r.image_url} alt={r.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-surface-300 text-[10px] font-bold">NO IMG</div>
+                  )}
                 </div>
-                <p className="text-sm font-medium text-surface-500">
-                  <span className="capitalize">{r.type.replace('_', ' ')}</span> <span className="mx-1.5 opacity-50">•</span> 
-                  {r.location || 'Location TBD'} <span className="mx-1.5 opacity-50">•</span> 
-                  Capacity {r.capacity}
-                </p>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="font-display text-lg font-bold text-surface-900 leading-tight">{r.name}</p>
+                    {!r.is_active && <span className="chip border-rose-200 bg-rose-50 text-rose-700 text-[10px]">Inactive</span>}
+                  </div>
+                  <p className="text-sm font-medium text-surface-500">
+                    <span className="capitalize">{r.type.replace('_', ' ')}</span> <span className="mx-1.5 opacity-50">•</span> 
+                    {r.location || 'Location TBD'} <span className="mx-1.5 opacity-50">•</span> 
+                    Capacity {r.capacity}
+                  </p>
+                </div>
               </div>
 
               {r.is_active && (
                 <button
                   id={`btn-deactivate-${r.id}`}
-                  className="rounded-xl border border-rose-200 bg-white px-5 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 shadow-sm"
+                  className="rounded-xl border border-rose-200 bg-white px-5 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 shadow-sm md:mr-2"
                   onClick={() => setDeactivateId(r.id)}
                 >
                   Deactivate

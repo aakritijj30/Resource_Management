@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
 class PolicyCreate(BaseModel):
@@ -11,6 +11,8 @@ class PolicyCreate(BaseModel):
     allowed_days: int = 0b0111110  # Mon-Fri
     require_justification: bool = False
     advance_booking_days: int = 30
+    max_attendees: Optional[int] = None
+    allowed_department_ids: Optional[List[int]] = None
 
 
 class PolicyUpdate(BaseModel):
@@ -21,6 +23,8 @@ class PolicyUpdate(BaseModel):
     allowed_days: Optional[int] = None
     require_justification: Optional[bool] = None
     advance_booking_days: Optional[int] = None
+    max_attendees: Optional[int] = None
+    allowed_department_ids: Optional[List[int]] = None
 
 
 class PolicyOut(BaseModel):
@@ -33,5 +37,7 @@ class PolicyOut(BaseModel):
     allowed_days: int
     require_justification: bool
     advance_booking_days: int
+    max_attendees: Optional[int] = None
+    allowed_department_ids: Optional[List[int]] = None
 
     model_config = {"from_attributes": True}

@@ -10,6 +10,7 @@ import { useDepartmentBookings } from '../../hooks/useBookings';
 export default function EmployeeApprovalsPage() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all'); // all, pending, approved, rejected
+  const [search, setSearch] = useState('');
   
   const { data: approvals = [], isLoading: isApprovalsLoading } = useQuery({
     queryKey: ['approvals', 'history'],
@@ -21,10 +22,11 @@ export default function EmployeeApprovalsPage() {
   const isLoading = isApprovalsLoading || isTeamLoading;
 
   const filteredApprovals = approvals.filter(a => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return a.decision === 'pending';
-    if (filter === 'approved') return a.decision === 'approved';
-    return true;
+    const matchesFilter = filter === 'all' || a.decision === filter;
+    const matchesSearch = 
+      (a.resource_name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (a.user_name || "").toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
 
   const getStatusStyle = (status) => {
@@ -58,7 +60,7 @@ export default function EmployeeApprovalsPage() {
       <div className="card">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
            <div className="flex bg-surface-100 p-1 rounded-2xl w-fit">
-              {['all', 'pending', 'approved'].map((f) => (
+              {['all', 'pending', 'approved', 'rejected'].map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
@@ -68,7 +70,7 @@ export default function EmployeeApprovalsPage() {
                     : 'text-surface-400 hover:text-surface-600'
                   }`}
                 >
-                  {f}
+                  {f === 'rejected' ? 'Rejected/Cancelled' : f}
                 </button>
               ))}
            </div>
@@ -78,6 +80,8 @@ export default function EmployeeApprovalsPage() {
              <input 
                type="text" 
                placeholder="Search by resource or user..." 
+               value={search}
+               onChange={(e) => setSearch(e.target.value)}
                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-surface-200 bg-surface-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
              />
            </div>
@@ -122,8 +126,14 @@ export default function EmployeeApprovalsPage() {
                           {a.user_name || 'System User'}
                         </span>
                         <span className="text-[11px] font-medium text-surface-400">
-                          {new Date(a.created_at).toLocaleDateString()}
+                          Created: {new Date(a.created_at).toLocaleDateString()}
                         </span>
+                        {a.booking && (
+                          <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                            Slot: {new Date(a.booking.start_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 
+                            - {new Date(a.booking.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from schemas.booking import BookingCreate, BookingOut, BookingUpdate, BookingAuditOut
 from services.booking_service import create_booking, cancel_booking, get_bookings, get_booking_by_id, update_booking, get_booking_audit_trail
 from utils.dependencies import get_db, get_current_user
@@ -9,8 +9,17 @@ from models.user import User, RoleEnum
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 @router.get("/", response_model=List[BookingOut])
-def list_user_bookings(mine_only: bool = False, skip: int = 0, limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return get_bookings(db, current_user, skip, limit, mine_only)
+def list_user_bookings(
+    mine_only: bool = False, 
+    skip: int = 0, 
+    limit: int = 50, 
+    department_id: Optional[int] = None,
+    is_common: Optional[bool] = None,
+    sort: str = 'latest',
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    return get_bookings(db, current_user, skip, limit, mine_only, department_id, is_common, sort)
 
 
 @router.get("/department", response_model=List[BookingOut])

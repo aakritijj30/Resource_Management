@@ -23,6 +23,7 @@ class Resource(Base):
     location = Column(String(200), nullable=True)
     description = Column(Text, nullable=True)
     approval_required = Column(Boolean, default=False)
+    image_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=now_local_naive)
     # NULL = shared/common resource visible to all; set to dept id for dept-specific

@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from schemas.resource import ResourceCreate, ResourceOut, ResourceUpdate
 from schemas.policy import PolicyCreate, PolicyUpdate, PolicyOut
+from schemas.booking import BookingOut
 from services.resource_service import get_all_resources, get_resource_by_id, create_resource, update_resource, deactivate_resource
 from services.policy_service import upsert_policy, get_policy
+from services.booking_service import get_resource_bookings
 from services.audit_service import log_action
 from models.audit_log import AuditActionEnum
 from models.user import User, RoleEnum
@@ -70,3 +72,8 @@ def set_policy(resource_id: int, data: PolicyUpdate, db: Session = Depends(get_d
     log_action(db, current_user.id, AuditActionEnum.policy_updated, "resource_policy", resource_id)
     db.commit()
     return policy
+
+
+@router.get("/{resource_id}/bookings", response_model=List[BookingOut])
+def list_resource_bookings(resource_id: int, db: Session = Depends(get_db)):
+    return get_resource_bookings(db, resource_id)

@@ -1,5 +1,9 @@
+import { useState } from 'react'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import { useUsageReport, useTrends } from '../../hooks/useReports'
+import { useQuery } from '@tanstack/react-query'
+import { getDepartments } from '../../api/departmentApi'
+import { LayoutGrid, ChevronDown } from 'lucide-react'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend
@@ -8,8 +12,16 @@ import {
 const COLORS = ['#6366f1', '#22d3ee', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6']
 
 export default function ReportsDashboardPage() {
-  const { data: report, isLoading }    = useUsageReport()
-  const { data: trends = [], isLoading: trendsLoading } = useTrends(6)
+  const [selectedDeptId, setSelectedDeptId] = useState('all')
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => getDepartments().then(r => r.data)
+  })
+
+  const deptParam = selectedDeptId === 'all' ? undefined : selectedDeptId
+  const { data: report, isLoading }    = useUsageReport(deptParam)
+  const { data: trends = [], isLoading: trendsLoading } = useTrends(6, deptParam)
 
   if (isLoading || trendsLoading) return (
     <div className="w-full flex justify-center py-20"><LoadingSpinner /></div>
@@ -30,6 +42,28 @@ export default function ReportsDashboardPage() {
         <h1 className="page-title">Reports</h1>
         <p className="page-copy">Usage statistics and booking trends across your organization.</p>
       </section>
+
+      {/* Admin Department Filter */}
+      <div className="card mb-8 bg-white/80 backdrop-blur-md border-surface-200/60 shadow-xl shadow-surface-900/5">
+        <div className="space-y-3">
+          <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest flex items-center gap-2">
+            <LayoutGrid size={12} /> Filter Reports by Department
+          </p>
+          <div className="relative w-full max-w-sm">
+            <select
+              value={selectedDeptId}
+              onChange={(e) => setSelectedDeptId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+              className="w-full appearance-none bg-surface-50 border border-surface-200 text-surface-900 text-sm rounded-xl px-4 py-3 pr-10 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none font-medium cursor-pointer hover:bg-white"
+            >
+              <option value="all">Organization-Wide (All)</option>
+              {departments.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" />
+          </div>
+        </div>
+      </div>
 
           {/* KPI row */}
           {report && (

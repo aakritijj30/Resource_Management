@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { Power, Calendar } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import clsx from 'clsx'
 
 const NAV_LINKS = {
@@ -89,13 +89,6 @@ export default function Sidebar() {
                 )}
               </div>
             </div>
-            <button 
-              onClick={logout}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-surface-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-              title="Sign Out"
-            >
-              <Power size={16} />
-            </button>
           </div>
           <div className="mt-3">
             <button 

@@ -28,11 +28,22 @@ def get_pending_approvals(db: Session, manager: User):
         query = query.filter(Approval.manager_id == None)
     
     approvals = query.all()
+    filtered_approvals = []
     for a in approvals:
+        # Sync check: If booking was cancelled (preempted), fix the approval and don't show in pending queue
+        if a.booking.status == BookingStatusEnum.cancelled:
+            a.decision = ApprovalDecisionEnum.rejected
+            a.comment = a.comment or "System: Auto-rejected due to booking cancellation."
+            a.decided_at = a.decided_at or now_local_naive()
+            db.add(a)
+            db.commit()
+            continue
+            
         a.user_name = a.booking.user.full_name if a.booking.user else f"User #{a.booking.user_id}"
         a.resource_id = a.booking.resource_id
         a.resource_name = a.booking.resource.name if a.booking.resource else f"Resource #{a.booking.resource_id}"
-    return approvals
+        filtered_approvals.append(a)
+    return filtered_approvals
 
 
 def get_approval_history(db: Session, manager: User):
@@ -40,7 +51,6 @@ def get_approval_history(db: Session, manager: User):
     query = (
         db.query(Approval)
         .options(joinedload(Approval.booking).joinedload(Booking.user), joinedload(Approval.booking).joinedload(Booking.resource))
-        .filter(Approval.decision != ApprovalDecisionEnum.pending)
     )
     if manager.role != RoleEnum.admin:
         query = query.filter(Approval.manager_id == manager.id)
@@ -48,8 +58,17 @@ def get_approval_history(db: Session, manager: User):
         # Admins should only see requests for employees without an assigned manager
         query = query.filter(Approval.manager_id == None)
     
-    approvals = query.order_by(Approval.decided_at.desc()).all()
+    approvals = query.order_by(Approval.created_at.desc()).all()
     for a in approvals:
+        # Sync logic: If the booking was cancelled (e.g. by preemption), the approval must not stay 'pending'
+        if a.booking.status == BookingStatusEnum.cancelled and a.decision == ApprovalDecisionEnum.pending:
+            a.decision = ApprovalDecisionEnum.rejected
+            a.comment = a.comment or "System: Booking was cancelled by a priority request or user."
+            a.decided_at = a.decided_at or now_local_naive()
+            db.add(a)
+            db.commit() # Commit each fix to ensure consistency
+            db.refresh(a)
+
         a.user_name = a.booking.user.full_name if a.booking.user else f"User #{a.booking.user_id}"
         a.resource_id = a.booking.resource_id
         a.resource_name = a.booking.resource.name if a.booking.resource else f"Resource #{a.booking.resource_id}"

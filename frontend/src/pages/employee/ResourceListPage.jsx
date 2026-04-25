@@ -28,6 +28,7 @@ export default function ResourceListPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [scopeFilter, setScopeFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [approvalFilter, setApprovalFilter] = useState('all');
   const { data: resources = [], isLoading } = useResources();
 
   const filtered = resources.filter(r => {
@@ -38,7 +39,13 @@ export default function ResourceListPage() {
       r.name.toLowerCase().includes(search.toLowerCase()) ||
       r.location?.toLowerCase().includes(search.toLowerCase()) ||
       r.description?.toLowerCase().includes(search.toLowerCase());
-    return matchType && matchSearch;
+    
+    const matchApproval = 
+      approvalFilter === 'all' || 
+      (approvalFilter === 'required' && r.approval_required) ||
+      (approvalFilter === 'not_required' && !r.approval_required);
+
+    return matchType && matchSearch && matchApproval;
   });
 
   const commonCount = resources.filter(r => r.department_id === null).length;
@@ -96,6 +103,48 @@ export default function ResourceListPage() {
 
           <div className="h-px w-full bg-surface-100" />
 
+          {/* Approval Filter */}
+          <div>
+            <p className="text-xs font-semibold text-surface-500 uppercase tracking-widest mb-3">Approval Requirement</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setApprovalFilter('all')}
+                className={clsx(
+                  'rounded-full border px-4 py-2 text-sm font-medium transition-all',
+                  approvalFilter === 'all'
+                    ? 'border-primary-200 bg-primary-50 text-primary-700 shadow-sm'
+                    : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 hover:text-surface-900'
+                )}
+              >
+                Any
+              </button>
+              <button
+                onClick={() => setApprovalFilter('required')}
+                className={clsx(
+                  'rounded-full border px-4 py-2 text-sm font-medium transition-all',
+                  approvalFilter === 'required'
+                    ? 'border-amber-200 bg-amber-50 text-amber-700 shadow-sm'
+                    : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 hover:text-surface-900'
+                )}
+              >
+                Requires Approval
+              </button>
+              <button
+                onClick={() => setApprovalFilter('not_required')}
+                className={clsx(
+                  'rounded-full border px-4 py-2 text-sm font-medium transition-all',
+                  approvalFilter === 'not_required'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm'
+                    : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 hover:text-surface-900'
+                )}
+              >
+                Instant Booking
+              </button>
+            </div>
+          </div>
+
+          <div className="h-px w-full bg-surface-100" />
+
           {/* Search + Type filters row */}
           <div className="w-full">
             <div className="max-w-xl">
@@ -136,11 +185,44 @@ export default function ResourceListPage() {
                 <div className="card h-full transition-all duration-200 hover:-translate-y-1 hover:border-primary-200/60 hover:shadow-glow flex flex-col justify-between">
 
                   <div>
+                    {/* Resource Image */}
+                    <div className="relative h-48 w-full overflow-hidden rounded-2xl mb-5 group-hover:shadow-lg transition-all duration-300">
+                      {r.image_url ? (
+                        <img 
+                          src={r.image_url} 
+                          alt={r.name} 
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                        />
+                      ) : (
+                        <div className={`h-full w-full flex items-center justify-center ${meta.color.split(' ')[0]} opacity-40`}>
+                           <span className="text-4xl font-black opacity-20">{meta.short}</span>
+                        </div>
+                      )}
+                      
+                      {/* Badge column - Overlaid on image */}
+                      <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5 shrink-0">
+                        {isCommon ? (
+                          <span className="chip bg-white/90 text-sky-700 border-sky-200 text-[10px] shadow-sm backdrop-blur-md">
+                            Common
+                          </span>
+                        ) : (
+                          <span className="chip bg-white/90 text-indigo-700 border-indigo-200 text-[10px] shadow-sm backdrop-blur-md">
+                            My Dept
+                          </span>
+                        )}
+                        {r.approval_required && (
+                          <span className="chip bg-white/90 text-amber-700 border-amber-200 text-[10px] shadow-sm backdrop-blur-md">
+                            Approval req.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="flex items-center gap-3">
                         <div className={clsx(
-                          'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-sm font-bold tracking-[0.18em] shadow-sm',
+                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-[10px] font-bold tracking-[0.18em] shadow-sm',
                           meta.color
                         )}>
                           {meta.short}
@@ -149,26 +231,8 @@ export default function ResourceListPage() {
                           <h3 className="text-lg font-display font-bold text-surface-900 group-hover:text-primary-700 leading-tight transition-colors">
                             {r.name}
                           </h3>
-                          <p className="mt-0.5 text-xs text-surface-500 font-medium">{meta.label}</p>
+                          <p className="mt-0.5 text-[10px] text-surface-500 font-bold uppercase tracking-widest">{meta.label}</p>
                         </div>
-                      </div>
-
-                      {/* Badge column */}
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        {isCommon ? (
-                          <span className="chip bg-sky-50 text-sky-700 border-sky-200 text-[10px]">
-                            Common
-                          </span>
-                        ) : (
-                          <span className="chip bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]">
-                            My Dept
-                          </span>
-                        )}
-                        {r.approval_required && (
-                          <span className="chip bg-yellow-50 text-yellow-700 border-yellow-200 text-[10px]">
-                            Approval req.
-                          </span>
-                        )}
                       </div>
                     </div>
 

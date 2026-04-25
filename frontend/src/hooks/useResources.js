@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getResources, getResource, createResource, updateResource, deactivateResource } from '../api/resourceApi'
+import { getResources, getResource, createResource, updateResource, deactivateResource, getResourceBookings } from '../api/resourceApi'
+
+export function useResourceBookings(id) {
+  return useQuery({ queryKey: ['resource-bookings', id], queryFn: () => getResourceBookings(id).then(r => r.data), enabled: !!id })
+}
 
 export function useResources(params) {
   return useQuery({ queryKey: ['resources', params], queryFn: () => getResources(params).then(r => r.data) })

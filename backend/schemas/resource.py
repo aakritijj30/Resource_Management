@@ -10,6 +10,7 @@ class ResourceCreate(BaseModel):
     location: Optional[str] = None
     description: Optional[str] = None
     approval_required: bool = False
+    image_url: Optional[str] = None
     department_id: Optional[int] = None  # None = common/shared resource
 
 
@@ -20,6 +21,7 @@ class ResourceUpdate(BaseModel):
     location: Optional[str] = None
     description: Optional[str] = None
     approval_required: Optional[bool] = None
+    image_url: Optional[str] = None
     is_active: Optional[bool] = None
     department_id: Optional[int] = None
 
@@ -32,6 +34,7 @@ class ResourceOut(BaseModel):
     location: Optional[str]
     description: Optional[str]
     approval_required: bool
+    image_url: Optional[str] = None
     is_active: bool
     department_id: Optional[int] = None
 

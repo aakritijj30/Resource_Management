@@ -59,6 +59,7 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
     _ensure_resource_department_column()
     _ensure_audit_action_enum()
+    _ensure_resource_policies_columns()
     db = SessionLocal()
     try:
         policies = db.query(ResourcePolicy).all()
@@ -88,6 +89,26 @@ def _ensure_resource_department_column():
         if "department_id" not in resource_columns:
             db.execute(text("ALTER TABLE resources ADD COLUMN department_id INTEGER"))
             db.commit()
+    finally:
+        db.close()
+
+
+def _ensure_resource_policies_columns():
+    db = SessionLocal()
+    try:
+        inspector = inspect(db.bind)
+        # Handle cases where the table doesn't exist yet gracefully
+        if not inspector.has_table("resource_policies"):
+            return
+            
+        columns = {col["name"] for col in inspector.get_columns("resource_policies")}
+        if "max_attendees" not in columns:
+            db.execute(text("ALTER TABLE resource_policies ADD COLUMN max_attendees INTEGER"))
+        if "allowed_department_ids" not in columns:
+            db.execute(text("ALTER TABLE resource_policies ADD COLUMN allowed_department_ids JSON"))
+        db.commit()
+    except Exception:
+        db.rollback()
     finally:
         db.close()
 

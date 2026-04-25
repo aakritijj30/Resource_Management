@@ -25,7 +25,7 @@ def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datet
         check_booking_conflict(db, resource_id, start_time, end_time, exclude_booking_id)
         return
 
-    conflicts = db.query(Booking).options(joinedload(Booking.user)).filter(
+    conflicts = db.query(Booking).options(joinedload(Booking.user), joinedload(Booking.approval)).filter(
         Booking.resource_id == resource_id,
         Booking.status.in_([BookingStatusEnum.approved, BookingStatusEnum.pending]),
         Booking.start_time < end_time,
@@ -45,6 +45,12 @@ def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datet
     # Preempt employee bookings
     for b in conflict_list:
         b.status = BookingStatusEnum.cancelled
+        if b.approval:
+            from models.approval import ApprovalDecisionEnum
+            b.approval.decision = ApprovalDecisionEnum.rejected
+            b.approval.comment = f"Auto-cancelled: Priority booking by {current_user.role.value}."
+            b.approval.decided_at = now_local_naive()
+
         log_action(db, current_user.id, AuditActionEnum.booking_cancelled, "booking", b.id,
                    {"reason": f"Priority booking by {current_user.role.value} {current_user.full_name}", "preempted_by_role": current_user.role.value})
         
@@ -301,13 +307,35 @@ def cancel_booking(db: Session, booking_id: int, current_user: User) -> Booking:
     return booking
 
 
-def get_bookings(db: Session, current_user: User, skip: int = 0, limit: int = 50, mine_only: bool = False):
+def get_bookings(
+    db: Session, 
+    current_user: User, 
+    skip: int = 0, 
+    limit: int = 50, 
+    mine_only: bool = False,
+    department_id: Optional[int] = None,
+    is_common: Optional[bool] = None,
+    sort: str = 'latest'
+):
     refresh_completed_bookings(db)
-    q = db.query(Booking).options(joinedload(Booking.user), joinedload(Booking.approval))
+    q = db.query(Booking).options(joinedload(Booking.user), joinedload(Booking.approval), joinedload(Booking.resource))
+    
     if mine_only or current_user.role == RoleEnum.employee:
         q = q.filter(Booking.user_id == current_user.id)
     
-    results = q.order_by(Booking.created_at.desc()).offset(skip).limit(limit).all()
+    # Advanced filters for Admin/Manager
+    if current_user.role in [RoleEnum.admin, RoleEnum.manager]:
+        if is_common is True:
+            q = q.join(Resource).filter(Resource.department_id == None)
+        elif department_id:
+            q = q.join(Resource).filter(Resource.department_id == department_id)
+            
+    if sort == 'earliest':
+        q = q.order_by(Booking.start_time.asc())
+    else:
+        q = q.order_by(Booking.start_time.desc())
+    
+    results = q.offset(skip).limit(limit).all()
     
     # Manually attach names for the schema to pick up, or rely on relationships if lazy loading is fast enough.
     # To be safe and avoid N+1, we can just ensure they are loaded.
@@ -339,6 +367,23 @@ def get_department_bookings(db: Session, manager: User, skip: int = 0, limit: in
         b.user_name = b.user.full_name if b.user else f"User #{b.user_id}"
         b.resource_name = b.resource.name if b.resource else f"Resource #{b.resource_id}"
     
+    return results
+
+
+def get_resource_bookings(db: Session, resource_id: int):
+    """Returns upcoming approved/pending bookings for a specific resource."""
+    refresh_completed_bookings(db)
+    results = (
+        db.query(Booking)
+        .options(joinedload(Booking.user))
+        .filter(Booking.resource_id == resource_id)
+        .filter(Booking.status.in_([BookingStatusEnum.approved, BookingStatusEnum.pending]))
+        .filter(Booking.end_time >= now_local_naive())
+        .order_by(Booking.start_time.asc())
+        .all()
+    )
+    for b in results:
+        b.user_name = b.user.full_name if b.user else "Anonymous"
     return results
 
 

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Clock, Calendar, Save, Settings2, ShieldCheck, Zap } from 'lucide-react'
+import { ChevronDown, Clock, Calendar, Save, Settings2, ShieldCheck, Zap, Users, Building2, LayoutGrid } from 'lucide-react'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
 import { useResources } from '../../hooks/useResources'
 import { getPolicy, setPolicy } from '../../api/resourceApi'
+import { getDepartments } from '../../api/authApi'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 const ICONS = {
@@ -13,6 +14,7 @@ const ICONS = {
   office_hours_start: <Clock size={16} />,
   office_hours_end: <Clock size={16} />,
   advance_booking_days: <Calendar size={16} />,
+  max_attendees: <Users size={16} />,
 }
 
 function PolicyForm({ resource, onClose }) {
@@ -20,6 +22,11 @@ function PolicyForm({ resource, onClose }) {
   const { data: policy, isLoading } = useQuery({
     queryKey: ['policy', resource.id],
     queryFn: () => getPolicy(resource.id).then(r => r.data).catch(() => null)
+  })
+
+  const { data: departments } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => getDepartments().then(r => r.data).catch(() => [])
   })
   
   const saveMutation = useMutation({
@@ -59,6 +66,7 @@ function PolicyForm({ resource, onClose }) {
           { key: 'advance_booking_days',  label: 'Max Advance (Days)' },
           { key: 'office_hours_start',    label: 'Open Hour (24h)' },
           { key: 'office_hours_end',      label: 'Close Hour (24h)' },
+          { key: 'max_attendees',         label: 'Max Attendees' },
         ].map(f => (
           <div key={f.key} className="bg-surface-50 rounded-2xl p-4 border border-surface-100 transition-colors focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-500/10">
             <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-primary-600 mb-3">
@@ -68,11 +76,11 @@ function PolicyForm({ resource, onClose }) {
             <div className="relative">
               <input 
                 type="number" 
-                step="0.5" 
+                step={f.key.includes('duration') ? "0.5" : "1"}
                 min="0"
                 className="w-full bg-transparent text-xl font-display font-semibold text-surface-900 focus:outline-none" 
                 value={currentPolicy[f.key] ?? ''}
-                onChange={e => setForm(p => ({ ...(p || currentPolicy), [f.key]: parseFloat(e.target.value) }))} 
+                onChange={e => setForm(p => ({ ...(p || currentPolicy), [f.key]: e.target.value === '' ? null : parseFloat(e.target.value) }))} 
               />
             </div>
           </div>
@@ -109,6 +117,40 @@ function PolicyForm({ resource, onClose }) {
           })}
         </div>
       </div>
+
+      <div className="bg-surface-50 rounded-2xl p-4 border border-surface-100">
+        <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-primary-600 mb-3">
+          <Building2 size={16} />
+          Allowed Departments (Leave empty for all)
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {departments?.map(dept => {
+            const allowedDepts = currentPolicy.allowed_department_ids || [];
+            const isSelected = allowedDepts.includes(dept.id);
+            return (
+              <button
+                key={dept.id}
+                type="button"
+                onClick={() => {
+                  let newDepts = [...allowedDepts];
+                  if (isSelected) newDepts = newDepts.filter(id => id !== dept.id);
+                  else newDepts.push(dept.id);
+                  if (newDepts.length === 0) newDepts = null;
+                  setForm(p => ({ ...(p || currentPolicy), allowed_department_ids: newDepts }));
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${
+                  isSelected ? 'bg-primary-500 text-white shadow-sm' : 'bg-surface-200 text-surface-500 hover:bg-surface-300'
+                }`}
+              >
+                {dept.name}
+              </button>
+            )
+          })}
+          {(!departments || departments.length === 0) && (
+             <span className="text-xs text-surface-500 font-medium">No departments available</span>
+          )}
+        </div>
+      </div>
       
       <ErrorMessage error={error} />
       
@@ -124,7 +166,19 @@ function PolicyForm({ resource, onClose }) {
 
 export default function PolicyConfigPage() {
   const { data: resources = [], isLoading } = useResources()
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => getDepartments().then(r => r.data)
+  })
+
   const [expanded, setExpanded] = useState(null)
+  const [scopeFilter, setScopeFilter] = useState('all')
+
+  const filtered = resources.filter(r => {
+    if (scopeFilter === 'common') return r.department_id === null;
+    if (scopeFilter !== 'all') return r.department_id === scopeFilter;
+    return true;
+  });
 
   const containerVars = {
     hidden: { opacity: 0 },
@@ -147,27 +201,56 @@ export default function PolicyConfigPage() {
         <p className="page-copy mt-2">Define boundaries, durations, and lead times to orchestrate your hardware and spaces beautifully.</p>
       </section>
 
+      {/* Admin Scope Filter */}
+      <div className="card mb-8 bg-white/80 backdrop-blur-md border-surface-200/60 shadow-xl shadow-surface-900/5">
+        <div className="space-y-3">
+          <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest flex items-center gap-2">
+            <LayoutGrid size={12} /> Filter Resources by Department
+          </p>
+          <div className="relative w-full max-w-sm">
+            <select
+              value={scopeFilter}
+              onChange={(e) => setScopeFilter(e.target.value === 'all' || e.target.value === 'common' ? e.target.value : parseInt(e.target.value))}
+              className="w-full appearance-none bg-surface-50 border border-surface-200 text-surface-900 text-sm rounded-xl px-4 py-3 pr-10 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none font-medium cursor-pointer hover:bg-white"
+            >
+              <option value="all">All Resources (Org-Wide)</option>
+              <option value="common">Common Resources (No Dept)</option>
+              {departments.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="py-20 flex justify-center"><LoadingSpinner /></div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
           
           <motion.div variants={containerVars} initial="hidden" animate="show" className="space-y-4">
-            {resources.map(r => (
+            {filtered.map(r => (
               <motion.div key={r.id} variants={itemVars} className="card p-6 border-transparent hover:border-primary-200 transition-all duration-300">
                 <div 
                   className="flex items-center justify-between cursor-pointer group" 
                   onClick={() => setExpanded(expanded === r.id ? null : r.id)}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
-                      <ShieldCheck size={24} />
+                    <div className="h-14 w-20 rounded-xl overflow-hidden bg-primary-50 border border-primary-100 shrink-0">
+                      {r.image_url ? (
+                        <img src={r.image_url} alt={r.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-primary-300">
+                          <ShieldCheck size={24} />
+                        </div>
+                      )}
                     </div>
                     <div>
-                      <h3 className="font-display text-lg font-semibold text-surface-900 group-hover:text-primary-700 transition-colors">
+                      <h3 className="font-display text-lg font-bold text-surface-900 group-hover:text-primary-700 transition-colors leading-tight">
                         {r.name}
                       </h3>
-                      <p className="text-sm font-medium text-surface-500 uppercase tracking-widest text-[10px] mt-1">
+                      <p className="text-sm font-bold text-surface-400 uppercase tracking-widest text-[9px] mt-1">
                         {r.type.replace('_',' ')}
                       </p>
                     </div>
@@ -189,9 +272,9 @@ export default function PolicyConfigPage() {
               </motion.div>
             ))}
             
-            {resources.length === 0 && (
+            {filtered.length === 0 && (
               <div className="card text-center py-16">
-                <p className="text-surface-500 font-medium">No resources found to configure.</p>
+                <p className="text-surface-500 font-medium">No resources match the selected filter.</p>
               </div>
             )}
           </motion.div>
