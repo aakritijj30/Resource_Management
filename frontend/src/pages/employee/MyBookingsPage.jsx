@@ -65,37 +65,74 @@ export default function MyBookingsPage() {
       ) : bookings.length === 0 ? (
         <EmptyState icon="BK" title="No bookings yet" description="Make your first booking by browsing available resources." />
       ) : (
-        <div className="grid gap-4">
-          {bookings.map(b => (
-            <div
-              key={b.id}
-              className="card flex cursor-pointer flex-col gap-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary-200/60 hover:shadow-glow md:flex-row md:items-center md:justify-between p-5"
-              onClick={() => navigate(`/employee/bookings/${b.id}`)}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-display font-semibold text-surface-900 group-hover:text-primary-700 transition-colors">{b.purpose}</p>
-                <p className="mt-1 text-sm font-medium text-surface-500">
-                  {formatISTDateTime(b.start_time)} - {formatISTTime(b.end_time)}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-4 md:flex-shrink-0">
-                <StatusBadge status={b.status} />
-                {['pending', 'approved'].includes(b.status) && isAfterNowIST(b.start_time) && (
-                  <button
-                    id={`btn-cancel-${b.id}`}
-                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
-                    onClick={e => {
-                      e.stopPropagation();
-                      setCancelId(b.id);
-                    }}
+        <div className="space-y-10">
+          <div>
+            <h2 className="text-xl font-bold text-surface-900 mb-4 px-2">Upcoming Bookings</h2>
+            {bookings.filter(b => ['pending', 'approved'].includes(b.status)).length === 0 ? (
+              <p className="text-sm text-surface-500 px-2">No upcoming bookings.</p>
+            ) : (
+              <div className="grid gap-4">
+                {bookings.filter(b => ['pending', 'approved'].includes(b.status)).map(b => (
+                  <div
+                    key={b.id}
+                    className="card flex cursor-pointer flex-col gap-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary-200/60 hover:shadow-glow md:flex-row md:items-center md:justify-between p-5"
+                    onClick={() => navigate(`/employee/bookings/${b.id}`)}
                   >
-                    Cancel
-                  </button>
-                )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-display font-semibold text-surface-900 group-hover:text-primary-700 transition-colors">{b.purpose}</p>
+                      <p className="mt-1 text-sm font-medium text-surface-500">
+                        {formatISTDateTime(b.start_time)} - {formatISTTime(b.end_time)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4 md:flex-shrink-0">
+                      <StatusBadge status={b.status} />
+                      {['pending', 'approved'].includes(b.status) && isAfterNowIST(b.end_time) && (
+                        <button
+                          id={`btn-cancel-${b.id}`}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setCancelId(b.id);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
+            )}
+          </div>
+
+          <div>
+            <h2 className="text-xl font-bold text-surface-900 mb-4 px-2 border-t border-surface-200 pt-6">History</h2>
+            {bookings.filter(b => ['completed', 'cancelled', 'rejected'].includes(b.status)).length === 0 ? (
+              <p className="text-sm text-surface-500 px-2">No booking history.</p>
+            ) : (
+              <div className="grid gap-4 opacity-75 hover:opacity-100 transition-opacity">
+                {bookings.filter(b => ['completed', 'cancelled', 'rejected'].includes(b.status)).map(b => (
+                  <div
+                    key={b.id}
+                    className="card flex cursor-pointer flex-col gap-4 transition-all duration-200 hover:-translate-y-1 hover:border-surface-300 md:flex-row md:items-center md:justify-between p-5 bg-surface-50"
+                    onClick={() => navigate(`/employee/bookings/${b.id}`)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-display font-semibold text-surface-900">{b.purpose}</p>
+                      <p className="mt-1 text-sm font-medium text-surface-500">
+                        {formatISTDateTime(b.start_time)} - {formatISTTime(b.end_time)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4 md:flex-shrink-0">
+                      <StatusBadge status={b.status} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -4,7 +4,7 @@ import StatCards from '../../components/dashboard/StatCards';
 import TodayBookings from '../../components/dashboard/TodayBookings';
 import { useUsageReport } from '../../hooks/useReports';
 import { motion } from 'framer-motion';
-import { Shield, Settings, Wrench, BarChart2 } from 'lucide-react';
+import { Shield, Settings, Wrench, BarChart2, CheckCircle2 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -21,6 +21,7 @@ export default function AdminDashboardPage() {
   ];
 
   const SHORTCUTS = [
+    { title: 'Approvals', desc: 'Accept & Reject', icon: <CheckCircle2 size={24} />, path: '/manager/approvals' },
     { title: 'Resources', desc: 'Catalog & limits', icon: <Shield size={24} />, path: '/admin/resources' },
     { title: 'Policies', desc: 'Rules & access', icon: <Settings size={24} />, path: '/admin/policies' },
     { title: 'Maintenance', desc: 'Downtime blocks', icon: <Wrench size={24} />, path: '/admin/maintenance' },

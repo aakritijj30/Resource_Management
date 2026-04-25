@@ -23,6 +23,9 @@ def get_pending_approvals(db: Session, manager: User):
     )
     if manager.role != RoleEnum.admin:
         query = query.filter(Approval.manager_id == manager.id)
+    else:
+        # Admins should only see requests for employees without an assigned manager
+        query = query.filter(Approval.manager_id == None)
     
     approvals = query.all()
     for a in approvals:
@@ -41,6 +44,9 @@ def get_approval_history(db: Session, manager: User):
     )
     if manager.role != RoleEnum.admin:
         query = query.filter(Approval.manager_id == manager.id)
+    else:
+        # Admins should only see requests for employees without an assigned manager
+        query = query.filter(Approval.manager_id == None)
     
     approvals = query.order_by(Approval.decided_at.desc()).all()
     for a in approvals:

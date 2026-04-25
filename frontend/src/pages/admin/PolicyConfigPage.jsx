@@ -78,6 +78,37 @@ function PolicyForm({ resource, onClose }) {
           </div>
         ))}
       </div>
+
+      <div className="bg-surface-50 rounded-2xl p-4 border border-surface-100">
+        <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-primary-600 mb-3">
+          <Calendar size={16} />
+          Allowed Days
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { bit: 1, label: 'Mon' }, { bit: 2, label: 'Tue' }, { bit: 4, label: 'Wed' },
+            { bit: 8, label: 'Thu' }, { bit: 16, label: 'Fri' }, { bit: 32, label: 'Sat' }, { bit: 64, label: 'Sun' }
+          ].map(day => {
+            const allowedDays = currentPolicy.allowed_days ?? 31;
+            const isSelected = (allowedDays & day.bit) !== 0;
+            return (
+              <button
+                key={day.bit}
+                type="button"
+                onClick={() => {
+                  const newDays = isSelected ? allowedDays & ~day.bit : allowedDays | day.bit;
+                  setForm(p => ({ ...(p || currentPolicy), allowed_days: newDays }));
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${
+                  isSelected ? 'bg-primary-500 text-white shadow-sm' : 'bg-surface-200 text-surface-500 hover:bg-surface-300'
+                }`}
+              >
+                {day.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
       
       <ErrorMessage error={error} />
       

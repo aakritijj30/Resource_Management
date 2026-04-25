@@ -137,6 +137,12 @@
       focus:ring-4 focus:ring-primary-500/10;
   }
 
+  /* Hide native password reveal icons */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+  
   .label {
     @apply mb-2 block text-sm font-bold text-surface-800;
   }

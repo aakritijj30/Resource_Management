@@ -57,74 +57,87 @@ def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datet
     db.flush()
 
 
-def create_booking(db: Session, data: BookingCreate, current_user: User) -> Booking:
+from datetime import timedelta
+
+def create_booking(db: Session, data: BookingCreate, current_user: User) -> list[Booking]:
     start_time = to_local_naive(data.start_time)
     end_time = to_local_naive(data.end_time)
 
+    # Validate overall dates
     validate_future_datetime(start_time)
-    validate_time_range(start_time, end_time)
 
     resource = db.query(Resource).filter(Resource.id == data.resource_id, Resource.is_active == True).first()
     if not resource:
         from utils.exceptions import ResourceNotFoundError
         raise ResourceNotFoundError()
 
-    # Run all validation checks
-    enforce_policy(db, data.resource_id, start_time, end_time)
-    check_maintenance_block(db, data.resource_id, start_time, end_time)
-    check_and_preempt_conflicts(db, data.resource_id, start_time, end_time, current_user)
-    check_capacity(db, data.resource_id, start_time, end_time, data.attendees)
-
     # Determine initial status and approval routing
-    is_common = resource.department_id is None
+    user_manager_id = current_user.department.manager_id if current_user.department else None
     is_mgmt = current_user.role in [RoleEnum.manager, RoleEnum.admin]
 
-    status = BookingStatusEnum.approved
-    requires_approval_record = False
-    manager_id = None
-
-    if is_common:
-        # Common resources (Meeting areas, Board rooms): Auto-approve
+    if is_mgmt:
         status = BookingStatusEnum.approved
         requires_approval_record = False
         manager_id = None
+    elif resource.approval_required:
+        status = BookingStatusEnum.pending
+        requires_approval_record = True
+        manager_id = user_manager_id
     else:
-        # Department resources
-        if is_mgmt:
-            # Managers/Admins auto-approved for department resources
-            status = BookingStatusEnum.approved
-            requires_approval_record = False
-        elif resource.approval_required:
-            # Employees follow resource rules
-            status = BookingStatusEnum.pending
-            requires_approval_record = True
-            dept = current_user.department
-            manager_id = dept.manager_id if (dept and dept.manager_id) else None
+        status = BookingStatusEnum.approved
+        requires_approval_record = False
+        manager_id = None
 
-    booking = Booking(
-        user_id=current_user.id,
-        resource_id=data.resource_id,
-        start_time=start_time,
-        end_time=end_time,
-        purpose=data.purpose,
-        attendees=data.attendees,
-        status=status
-    )
-    db.add(booking)
-    db.flush()
+    start_date = start_time.date()
+    end_date = end_time.date()
+    daily_start_time = start_time.time()
+    daily_end_time = end_time.time()
+    
+    if daily_end_time <= daily_start_time:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="End time must be after start time on the given days.")
 
-    if requires_approval_record:
-        approval = Approval(booking_id=booking.id, manager_id=manager_id)
-        db.add(approval)
-        log_action(db, current_user.id, AuditActionEnum.booking_created, "booking", booking.id,
-                   {"status": "pending", "resource_id": data.resource_id, "assigned_manager": manager_id})
-    else:
-        log_action(db, current_user.id, AuditActionEnum.booking_auto_approved, "booking", booking.id,
-                   {"status": "approved", "resource_id": data.resource_id})
+    created_bookings = []
+    current_date = start_date
+
+    while current_date <= end_date:
+        slot_start = datetime.combine(current_date, daily_start_time)
+        slot_end = datetime.combine(current_date, daily_end_time)
+        
+        # Validation checks per day
+        enforce_policy(db, data.resource_id, slot_start, slot_end)
+        check_maintenance_block(db, data.resource_id, slot_start, slot_end)
+        check_and_preempt_conflicts(db, data.resource_id, slot_start, slot_end, current_user)
+        check_capacity(db, data.resource_id, slot_start, slot_end, data.attendees)
+
+        booking = Booking(
+            user_id=current_user.id,
+            resource_id=data.resource_id,
+            start_time=slot_start,
+            end_time=slot_end,
+            purpose=data.purpose,
+            attendees=data.attendees,
+            status=status
+        )
+        db.add(booking)
+        db.flush()
+
+        if requires_approval_record:
+            approval = Approval(booking_id=booking.id, manager_id=manager_id)
+            db.add(approval)
+            log_action(db, current_user.id, AuditActionEnum.booking_created, "booking", booking.id,
+                       {"status": "pending", "resource_id": data.resource_id, "assigned_manager": manager_id})
+        else:
+            log_action(db, current_user.id, AuditActionEnum.booking_auto_approved, "booking", booking.id,
+                       {"status": "approved", "resource_id": data.resource_id})
+            
+        created_bookings.append(booking)
+        current_date += timedelta(days=1)
 
     db.commit()
-    db.refresh(booking)
-    return booking
+    for b in created_bookings:
+        db.refresh(b)
+    return created_bookings
 
 
 def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_user: User) -> Booking:
@@ -174,19 +187,23 @@ def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_us
     if data.attendees is not None:
         booking.attendees = data.attendees
 
-    if approval_required and booking.status == BookingStatusEnum.approved:
+    # Manager checking
+    manager_id = None
+    if booking.user and booking.user.department:
+        manager_id = booking.user.department.manager_id
+        
+    is_mgmt = current_user.role in [RoleEnum.manager, RoleEnum.admin]
+
+    if (approval_required or (not is_mgmt and manager_id is None)) and booking.status == BookingStatusEnum.approved:
         booking.status = BookingStatusEnum.pending
         if booking.approval:
             booking.approval.decision = ApprovalDecisionEnum.pending
             booking.approval.comment = "Edited booking; reapproval required."
             booking.approval.decided_at = None
         else:
-            manager_id = None
-            if booking.user and booking.user.department:
-                manager_id = booking.user.department.manager_id
             approval = Approval(booking_id=booking.id, manager_id=manager_id)
             db.add(approval)
-    elif not approval_required and booking.status == BookingStatusEnum.pending:
+    elif not approval_required and is_mgmt and booking.status == BookingStatusEnum.pending:
         booking.status = BookingStatusEnum.approved
         if booking.approval:
             db.delete(booking.approval)
@@ -214,24 +231,36 @@ def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_us
 
 
 def refresh_completed_bookings(db: Session) -> int:
-    """Promote expired approved bookings to completed and write an audit entry."""
+    """Promote expired approved bookings to completed, and expire pending bookings."""
     now = now_local_naive()
-    updated = db.query(Booking).filter(
+    count = 0
+    
+    updated_approved = db.query(Booking).filter(
         Booking.status == BookingStatusEnum.approved,
         Booking.end_time < now
     ).all()
-    count = 0
-    for booking in updated:
+    for booking in updated_approved:
         booking.status = BookingStatusEnum.completed
         log_action(
-            db,
-            booking.user_id,
-            AuditActionEnum.booking_completed,
-            "booking",
-            booking.id,
-            {"completed_at": now.isoformat()}
+            db, booking.user_id, AuditActionEnum.booking_completed, "booking", booking.id, {"completed_at": now.isoformat()}
         )
         count += 1
+        
+    updated_pending = db.query(Booking).filter(
+        Booking.status == BookingStatusEnum.pending,
+        Booking.end_time < now
+    ).all()
+    for booking in updated_pending:
+        booking.status = BookingStatusEnum.cancelled
+        log_action(
+            db, booking.user_id, AuditActionEnum.booking_cancelled, "booking", booking.id, {"reason": "Expired before approval"}
+        )
+        if booking.approval:
+            booking.approval.decision = ApprovalDecisionEnum.rejected
+            booking.approval.comment = "Auto-rejected due to expiration"
+            booking.approval.decided_at = now
+        count += 1
+        
     if count:
         db.commit()
     return count
@@ -250,10 +279,10 @@ def cancel_booking(db: Session, booking_id: int, current_user: User) -> Booking:
     if booking.status not in valid_cancel_states:
         raise InvalidStateTransitionError(booking.status.value, "cancelled")
 
-    # Must be before start time
-    if booking.start_time <= now_local_naive():
+    # Must be before end time
+    if booking.end_time <= now_local_naive():
         from fastapi import HTTPException
-        raise HTTPException(status_code=422, detail="Cannot cancel a booking that has already started")
+        raise HTTPException(status_code=422, detail="Cannot cancel a booking that has already ended")
 
     booking.status = BookingStatusEnum.cancelled
     log_action(

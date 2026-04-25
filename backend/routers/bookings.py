@@ -33,7 +33,7 @@ def get_audit(booking_id: int, db: Session = Depends(get_db), current_user: User
         raise UnauthorizedAccessError()
     return get_booking_audit_trail(db, booking_id)
 
-@router.post("/", response_model=BookingOut)
+@router.post("/", response_model=List[BookingOut])
 def book_resource(data: BookingCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return create_booking(db, data, current_user)
 

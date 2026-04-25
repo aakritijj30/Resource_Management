@@ -16,6 +16,7 @@ const NAV_LINKS = {
   ],
   admin: [
     { label: 'Dashboard',   to: '/admin',                icon: 'DB' },
+    { label: 'Approvals',   to: '/manager/approvals',    icon: 'EA' },
     { label: 'Resources',   to: '/admin/resources',      icon: 'RS' },
     { label: 'Policies',    to: '/admin/policies',       icon: 'PL' },
     { label: 'Maintenance', to: '/admin/maintenance',    icon: 'MN' },
@@ -30,7 +31,7 @@ export default function Sidebar() {
   const links = NAV_LINKS[user?.role] || []
 
   return (
-    <aside className="sticky top-0 z-20 flex w-full shrink-0 flex-col border-b border-slate-200 bg-white/85 p-4 backdrop-blur-xl lg:h-screen lg:w-72 lg:border-b-0 lg:border-r">
+    <aside className="sticky top-0 z-20 flex w-full shrink-0 flex-col border-b border-slate-200 bg-white/85 p-4 backdrop-blur-xl lg:h-screen lg:w-72 lg:border-b-0 lg:border-r lg:overflow-y-auto">
       <div className="mb-6 rounded-2xl border border-surface-200 bg-white p-4 shadow-glow">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-400 text-sm font-bold text-white shadow-lg shadow-primary-500/15">

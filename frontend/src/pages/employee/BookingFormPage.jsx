@@ -14,31 +14,42 @@ export default function BookingFormPage() {
   const createBooking = useCreateBooking();
 
   const [form, setForm] = useState({
+    start_date: '',
     start_time: '',
+    end_date: '',
     end_time: '',
     purpose: '',
     attendees: 1,
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const minStart = toISTDateTimeInput(new Date());
+  const minStartDate = new Date().toISOString().split('T')[0];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    if (!isAfterNowIST(form.start_time)) {
+    
+    if (!form.start_date || !form.start_time || !form.end_date || !form.end_time) {
+      setError(new Error('Please fill out all date and time fields.'));
+      return;
+    }
+
+    const startDateTime = `${form.start_date}T${form.start_time}`;
+    const endDateTime = `${form.end_date}T${form.end_time}`;
+
+    if (!isAfterNowIST(startDateTime)) {
       setError(new Error('Start time must be in the future.'));
       return;
     }
-    if (!form.end_time || form.end_time <= form.start_time) {
+    if (endDateTime <= startDateTime) {
       setError(new Error('End time must be after start time.'));
       return;
     }
     try {
       await createBooking.mutateAsync({
         resource_id: parseInt(resourceId),
-        start_time: form.start_time,
-        end_time: form.end_time,
+        start_time: startDateTime,
+        end_time: endDateTime,
         purpose: form.purpose,
         attendees: parseInt(form.attendees),
       });
@@ -91,15 +102,25 @@ export default function BookingFormPage() {
         <form onSubmit={handleSubmit} className="card space-y-6 pt-8 pb-8 px-6 sm:px-8 bg-white/80">
           <div className="grid sm:grid-cols-2 gap-5">
             <div>
+              <label className="text-xs font-semibold text-surface-500 uppercase tracking-widest block mb-2" htmlFor="start_date">Start Date</label>
+              <input id="start_date" type="date" className="input bg-surface-50 border-surface-200 text-surface-900 rounded-xl"
+                min={minStartDate}
+                value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-surface-500 uppercase tracking-widest block mb-2" htmlFor="end_date">End Date</label>
+              <input id="end_date" type="date" className="input bg-surface-50 border-surface-200 text-surface-900 rounded-xl"
+                min={form.start_date || minStartDate}
+                value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} required />
+            </div>
+            <div>
               <label className="text-xs font-semibold text-surface-500 uppercase tracking-widest block mb-2" htmlFor="start_time">Start Time</label>
-              <input id="start_time" type="datetime-local" className="input bg-surface-50 border-surface-200 text-surface-900 rounded-xl"
-                min={minStart}
+              <input id="start_time" type="time" className="input bg-surface-50 border-surface-200 text-surface-900 rounded-xl"
                 value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} required />
             </div>
             <div>
               <label className="text-xs font-semibold text-surface-500 uppercase tracking-widest block mb-2" htmlFor="end_time">End Time</label>
-              <input id="end_time" type="datetime-local" className="input bg-surface-50 border-surface-200 text-surface-900 rounded-xl"
-                min={form.start_time || minStart}
+              <input id="end_time" type="time" className="input bg-surface-50 border-surface-200 text-surface-900 rounded-xl"
                 value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} required />
             </div>
           </div>
