@@ -63,8 +63,8 @@ export default function LoginPage() {
                 <LogIn size={26} strokeWidth={2} />
               </div>
             </div>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-surface-900">Welcome Back</h1>
-            <p className="text-sm text-surface-500 mb-6 px-4">
+            <h1 className="font-display text-2xl font-black tracking-tight text-surface-950">Welcome Back</h1>
+            <p className="text-sm text-surface-800 mb-6 px-4 font-bold">
               Enter your credentials to access your dashboard.
             </p>
           </motion.div>
@@ -118,7 +118,7 @@ export default function LoginPage() {
             </button>
             
             <div className="pt-2">
-              <Link to="/signup" className="text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors">
+              <Link to="/signup" className="text-sm font-bold text-primary-600 hover:text-primary-800 transition-colors">
                 Need an account? Sign up
               </Link>
             </div>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -14,7 +14,7 @@
   }
 
   body {
-    @apply bg-surface-50 text-surface-900 font-sans antialiased;
+    @apply bg-surface-50 text-surface-950 font-sans antialiased;
     min-height: 100vh;
     background-image:
       radial-gradient(circle at 15% 20%, rgba(192, 108, 132, 0.08), transparent 25%),
@@ -47,15 +47,15 @@
   }
 
   h1 {
-    @apply text-3xl font-bold;
+    @apply text-3xl font-extrabold;
   }
 
   h2 {
-    @apply text-2xl font-semibold;
+    @apply text-2xl font-bold;
   }
 
   h3 {
-    @apply text-xl font-semibold;
+    @apply text-xl font-bold;
   }
 
   ::selection {
@@ -66,7 +66,7 @@
 
 @layer components {
   .app-shell {
-    @apply relative min-h-screen text-surface-900;
+    @apply relative min-h-screen text-surface-950;
   }
 
   .app-shell::before,
@@ -104,7 +104,7 @@
   }
 
   .public-shell {
-    @apply relative min-h-screen overflow-hidden text-surface-900 flex items-center justify-center bg-transparent;
+    @apply relative min-h-screen overflow-hidden text-surface-950 flex items-center justify-center bg-transparent;
   }
 
   .public-panel {
@@ -138,20 +138,24 @@
   }
 
   .label {
-    @apply mb-2 block text-sm font-medium text-surface-600;
+    @apply mb-2 block text-sm font-bold text-surface-800;
   }
 
   .badge {
     @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wide border;
   }
 
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors;
+  }
+
   .sidebar-link {
-    @apply flex items-center gap-3 rounded-2xl px-4 py-3 font-medium text-surface-600 transition-all duration-300
+    @apply flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold text-surface-700 transition-all duration-300
       hover:bg-primary-50/50 hover:text-primary-700 cursor-pointer;
   }
 
   .sidebar-link.active {
-    @apply bg-primary-100 text-primary-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] font-semibold;
+    @apply bg-primary-100 text-primary-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] font-bold;
   }
 
   .glass {
@@ -202,7 +206,7 @@
   }
 
   .page-title {
-    @apply text-4xl font-display font-extrabold text-surface-50 sm:text-5xl tracking-tight leading-[1.1];
+    @apply text-4xl font-display font-black text-surface-50 sm:text-5xl tracking-tight leading-[1.1];
   }
 
   .page-copy {

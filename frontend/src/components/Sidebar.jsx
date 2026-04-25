@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { Power, Calendar } from 'lucide-react'
 import clsx from 'clsx'
 
 const NAV_LINKS = {
@@ -36,21 +37,21 @@ export default function Sidebar() {
             RM
           </div>
           <div>
-            <h1 className="font-display text-lg font-bold text-surface-900">Resource Manager</h1>
-            <p className="text-[10px] uppercase tracking-[0.22em] text-surface-400 font-bold">Operations command center</p>
+            <h1 className="font-display text-lg font-black text-surface-950">Resource Manager</h1>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-surface-700 font-black">Operations command center</p>
           </div>
         </div>
       </div>
 
       <nav className="flex-1">
-        <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-surface-400">Workspace</p>
+        <p className="px-3 pb-2 text-[10px] font-black uppercase tracking-[0.28em] text-surface-700">Workspace</p>
         <div className="flex flex-wrap gap-2 lg:flex-col lg:space-y-1 lg:gap-0">
           {links.map(link => (
             <Link
               key={link.to}
               to={link.to}
               className={clsx(
-                'sidebar-link group',
+                'sidebar-link group relative',
               location.pathname === link.to && 'active',
               'w-full lg:w-auto'
             )}
@@ -58,7 +59,12 @@ export default function Sidebar() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-surface-200 bg-surface-50 text-[11px] font-bold tracking-[0.2em] text-surface-600 group-hover:border-primary-200 group-hover:text-primary-600 transition-colors">
                 {link.icon}
               </span>
-              <span>{link.label}</span>
+              <span className="flex-1">{link.label}</span>
+              {link.badge && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm">
+                  {link.badge}
+                </span>
+              )}
             </Link>
           ))}
         </div>
@@ -71,9 +77,9 @@ export default function Sidebar() {
               {user?.full_name?.[0] || '?'}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-surface-900">{user?.full_name}</p>
+              <p className="truncate text-sm font-black text-surface-950">{user?.full_name}</p>
               <div className="flex flex-wrap items-center gap-1.5 overflow-hidden">
-                <span className="text-[9px] uppercase tracking-widest font-bold text-surface-400">{user?.role}</span>
+                <span className="text-[9px] uppercase tracking-widest font-black text-surface-700">{user?.role}</span>
                 {user?.department_name && (
                   <>
                     <span className="text-[8px] text-surface-300">•</span>
@@ -82,6 +88,13 @@ export default function Sidebar() {
                 )}
               </div>
             </div>
+            <button 
+              onClick={logout}
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-surface-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+              title="Sign Out"
+            >
+              <Power size={16} />
+            </button>
           </div>
           <div className="mt-3">
             <button 

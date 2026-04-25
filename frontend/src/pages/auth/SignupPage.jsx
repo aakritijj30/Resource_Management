@@ -129,7 +129,7 @@ export default function SignupPage() {
     ? 'text-rose-500'
     : emailAvailable === true
       ? 'text-emerald-500'
-      : 'text-surface-400';
+      : 'text-surface-600';
 
   return (
     <div className="public-shell relative flex min-h-screen w-full items-center justify-center bg-transparent py-8 overflow-hidden">
@@ -162,7 +162,7 @@ export default function SignupPage() {
                 <UserPlus size={26} strokeWidth={2} />
               </div>
             </div>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-surface-900 mb-6">Create Account</h1>
+            <h1 className="font-display text-2xl font-black tracking-tight text-surface-950 mb-6">Create Account</h1>
           </motion.div>
 
           <motion.form
@@ -291,7 +291,7 @@ export default function SignupPage() {
             </button>
             
             <div className="pt-2">
-              <Link to="/login" className="text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors">
+              <Link to="/login" className="text-sm font-bold text-primary-600 hover:text-primary-800 transition-colors">
                 Already have an account? Sign In
               </Link>
             </div>

@@ -26,8 +26,8 @@ export default function HomePage() {
                 <Calendar size={32} strokeWidth={2} />
               </div>
             </div>
-            <h1 className="font-display text-4xl font-bold tracking-tight text-surface-900 mb-3">Resource Manager</h1>
-            <p className="text-surface-600 leading-relaxed mb-8 px-4 max-w-xs mx-auto">
+            <h1 className="font-display text-4xl font-black tracking-tight text-surface-950 mb-3">Resource Manager</h1>
+            <p className="text-surface-900 leading-relaxed mb-8 px-4 max-w-xs mx-auto font-semibold">
               Your modern workspace for managing teams, tracking projects, and allocating resources seamlessly.
             </p>
           </motion.div>
@@ -41,7 +41,7 @@ export default function HomePage() {
           >
             <Link
               to="/login"
-              className="group flex w-full items-center justify-center gap-2 rounded-full bg-primary-500 py-3.5 px-6 font-semibold text-white shadow-glow transition-all hover:-translate-y-0.5 hover:bg-primary-600 active:scale-95"
+              className="group flex w-full items-center justify-center gap-2 rounded-full bg-primary-500 py-3.5 px-6 font-bold text-white shadow-glow transition-all hover:-translate-y-0.5 hover:bg-primary-600 active:scale-95"
             >
               <LogIn size={18} />
               <span>Log in to your account</span>
@@ -50,7 +50,7 @@ export default function HomePage() {
             
             <Link
               to="/signup"
-              className="group flex w-full items-center justify-center gap-2 rounded-full bg-surface-100 py-3.5 px-6 font-medium text-surface-700 transition-all hover:-translate-y-0.5 hover:bg-surface-200 active:scale-95"
+              className="group flex w-full items-center justify-center gap-2 rounded-full bg-surface-100 py-3.5 px-6 font-bold text-surface-950 transition-all hover:-translate-y-0.5 hover:bg-surface-200 active:scale-95"
             >
               <UserPlus size={18} />
               <span>Create an account</span>
