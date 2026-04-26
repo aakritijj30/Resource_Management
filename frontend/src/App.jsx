@@ -52,6 +52,7 @@ export default function App() {
           <Route path="/employee/book/:resourceId" element={<BookingFormPage />} />
           <Route path="/employee/bookings"        element={<MyBookingsPage />} />
           <Route path="/employee/bookings/:id"    element={<BookingDetailPage />} />
+          <Route path="/employee/bookings/:id/edit" element={<BookingFormPage isEdit={true} />} />
         </Route>
 
         {/* Manager routes */}

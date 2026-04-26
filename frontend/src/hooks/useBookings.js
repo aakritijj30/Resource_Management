@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getBookings, getBooking, createBooking, cancelBooking, getAuditTrail, getDepartmentBookings } from '../api/bookingApi';
+import { getBookings, getBooking, createBooking, cancelBooking, getAuditTrail, getDepartmentBookings, updateBooking } from '../api/bookingApi';
 
 export function useBookings(params) {
   return useQuery({
@@ -44,5 +44,16 @@ export function useAuditTrail(id) {
     queryKey: ['auditTrail', id],
     queryFn: () => getAuditTrail(id).then(res => res.data),
     enabled: !!id,
+  });
+}
+
+export function useUpdateBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) => updateBooking(id, data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['bookings'] });
+      qc.invalidateQueries({ queryKey: ['bookings', id.toString()] });
+    },
   });
 }

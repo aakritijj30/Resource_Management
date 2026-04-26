@@ -1,19 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorMessage from '../../components/ErrorMessage';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useResource, useResourceBookings } from '../../hooks/useResources';
-import { useCreateBooking } from '../../hooks/useBookings';
+import { useBooking, useCreateBooking, useUpdateBooking } from '../../hooks/useBookings';
 import { isAfterNowIST, toISTDateTimeInput } from '../../utils/time';
 import { ArrowLeft } from 'lucide-react';
 import clsx from 'clsx';
 
-export default function BookingFormPage() {
-  const { resourceId } = useParams();
+export default function BookingFormPage({ isEdit = false }) {
+  const { resourceId: paramResourceId, id: bookingId } = useParams();
   const navigate = useNavigate();
+  const { data: booking, isLoading: isLoadingBooking } = useBooking(bookingId);
+  const resourceId = isEdit ? booking?.resource_id : paramResourceId;
+
   const { data: resource, isLoading: isLoadingResource } = useResource(resourceId);
   const { data: existingBookings = [], isLoading: isLoadingBookings } = useResourceBookings(resourceId);
   const createBooking = useCreateBooking();
+  const updateBooking = useUpdateBooking();
 
   const [form, setForm] = useState({
     start_date: '',
@@ -26,6 +30,19 @@ export default function BookingFormPage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const minStartDate = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    if (isEdit && booking) {
+      setForm({
+        start_date: booking.start_time.split('T')[0],
+        start_time: booking.start_time.split('T')[1].substring(0, 5),
+        end_date: booking.end_time.split('T')[0],
+        end_time: booking.end_time.split('T')[1].substring(0, 5),
+        purpose: booking.purpose,
+        attendees: booking.attendees,
+      });
+    }
+  }, [isEdit, booking]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,13 +65,26 @@ export default function BookingFormPage() {
       return;
     }
     try {
-      await createBooking.mutateAsync({
+      if (isEdit) {
+        await updateBooking.mutateAsync({
+          id: bookingId,
+          data: {
+            resource_id: parseInt(resourceId),
+            start_time: startDateTime,
+            end_time: endDateTime,
+            purpose: form.purpose,
+            attendees: parseInt(form.attendees),
+          }
+        });
+      } else {
+        await createBooking.mutateAsync({
         resource_id: parseInt(resourceId),
         start_time: startDateTime,
         end_time: endDateTime,
         purpose: form.purpose,
         attendees: parseInt(form.attendees),
       });
+      }
       setSuccess(true);
       setTimeout(() => navigate('/employee/bookings'), 1500);
     } catch (err) {
@@ -95,7 +125,7 @@ export default function BookingFormPage() {
             )}
             <div>
               <h2 className="text-3xl font-display font-bold text-surface-900 leading-tight">
-                Book: {resource?.name}
+                {isEdit ? 'Edit Booking' : 'Book'}: {resource?.name}
               </h2>
               <p className="text-surface-500 font-medium">
                 {resource?.location} · Capacity {resource?.capacity}
@@ -111,7 +141,7 @@ export default function BookingFormPage() {
           {success ? (
             <div className="card text-center py-16 animate-fade-in bg-white/60">
               <div className="text-5xl mb-4">🎉</div>
-              <h3 className="text-xl font-bold text-surface-900">Booking Submitted!</h3>
+              <h3 className="text-xl font-bold text-surface-900">Booking {isEdit ? 'Updated' : 'Submitted'}!</h3>
               <p className="text-surface-500 mt-2">Redirecting to your bookings...</p>
             </div>
           ) : (
@@ -187,8 +217,8 @@ export default function BookingFormPage() {
 
               <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-surface-100">
                 <button type="button" className="btn-secondary sm:w-1/3" onClick={() => navigate(-1)}>Cancel</button>
-                <button type="submit" id="btn-submit-booking" className="btn-primary flex-1" disabled={createBooking.isPending}>
-                  {createBooking.isPending ? 'Submitting...' : resource?.approval_required ? 'Submit for Approval' : 'Confirm Booking'}
+                <button type="submit" id="btn-submit-booking" className="btn-primary flex-1" disabled={createBooking.isPending || updateBooking.isPending}>
+                  {createBooking.isPending || updateBooking.isPending ? 'Submitting...' : isEdit ? 'Update Booking' : resource?.approval_required ? 'Submit for Approval' : 'Confirm Booking'}
                 </button>
               </div>
             </form>

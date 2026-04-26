@@ -214,16 +214,26 @@ def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_us
         
     is_mgmt = current_user.role in [RoleEnum.manager, RoleEnum.admin]
 
-    if (approval_required or (not is_mgmt and manager_id is None)) and booking.status == BookingStatusEnum.approved:
+    # Determine status after edit
+    if is_mgmt:
+        # Management edits are auto-approved
+        booking.status = BookingStatusEnum.approved
+        if booking.approval:
+            db.delete(booking.approval)
+    elif approval_required:
+        # If approval is required, ensure it goes to/stays in pending state
         booking.status = BookingStatusEnum.pending
         if booking.approval:
+            from models.approval import ApprovalDecisionEnum
             booking.approval.decision = ApprovalDecisionEnum.pending
             booking.approval.comment = "Edited booking; reapproval required."
             booking.approval.decided_at = None
+            booking.approval.manager_id = manager_id
         else:
             approval = Approval(booking_id=booking.id, manager_id=manager_id)
             db.add(approval)
-    elif not approval_required and is_mgmt and booking.status == BookingStatusEnum.pending:
+    else:
+        # No approval required for this resource
         booking.status = BookingStatusEnum.approved
         if booking.approval:
             db.delete(booking.approval)

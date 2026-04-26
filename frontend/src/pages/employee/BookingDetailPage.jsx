@@ -96,7 +96,13 @@ export default function BookingDetailPage() {
         </div>
 
         {canCancel && (
-          <div className="flex justify-end border-t border-surface-100 pt-6">
+          <div className="flex justify-end gap-3 border-t border-surface-100 pt-6">
+            <button 
+              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors"
+              onClick={() => navigate(`/employee/bookings/${id}/edit`)}
+            >
+              Edit Booking
+            </button>
             <button className="rounded-xl px-5 py-2.5 text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors" onClick={() => setShowCancelModal(true)}>
               Cancel Booking
             </button>
