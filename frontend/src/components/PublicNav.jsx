@@ -18,8 +18,7 @@ export default function PublicNav() {
     <header className="relative z-20 mx-auto mb-6 max-w-7xl">
       <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white/85 px-4 py-4 shadow-glow backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">Resource management suite</p>
-          <p className="mt-1 text-sm text-slate-600">Bookings, approvals, and shared resources.</p>
+          <p className="text-sm font-bold text-slate-600">Bookings, approvals, and shared resources.</p>
         </div>
 
         <nav className="flex flex-wrap gap-2">

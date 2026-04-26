@@ -34,12 +34,13 @@ export default function Sidebar() {
     <aside className="sticky top-0 z-20 flex w-full shrink-0 flex-col border-b border-slate-200 bg-white/85 p-4 backdrop-blur-xl lg:h-screen lg:w-72 lg:border-b-0 lg:border-r lg:overflow-y-auto">
       <div className="mb-6 rounded-2xl border border-surface-200 bg-white p-4 shadow-glow">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-400 text-sm font-bold text-white shadow-lg shadow-primary-500/15">
-            RM
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-600 to-indigo-500 text-sm font-bold text-white shadow-lg shadow-primary-500/20">
+            BB
           </div>
           <div>
-            <h1 className="font-display text-lg font-black text-surface-950">Resource Manager</h1>
-            <p className="text-[10px] uppercase tracking-[0.22em] text-surface-700 font-black">Operations command center</p>
+            <h1 className="font-display text-xl font-black bg-gradient-to-r from-primary-700 via-primary-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">
+              BookItBase
+            </h1>
           </div>
         </div>
       </div>

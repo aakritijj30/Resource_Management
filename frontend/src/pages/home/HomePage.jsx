@@ -26,7 +26,7 @@ export default function HomePage() {
                 <Calendar size={32} strokeWidth={2} />
               </div>
             </div>
-            <h1 className="font-display text-4xl font-black tracking-tight text-surface-950 mb-3">Resource Manager</h1>
+            <h1 className="font-display text-4xl font-black tracking-tight bg-gradient-to-r from-primary-700 to-indigo-600 bg-clip-text text-transparent mb-3">BookItBase</h1>
             <p className="text-surface-900 leading-relaxed mb-8 px-4 max-w-xs mx-auto font-semibold">
               Your modern workspace for managing teams, tracking projects, and allocating resources seamlessly.
             </p>

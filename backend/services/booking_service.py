@@ -98,7 +98,8 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> list
     # Validate overall dates
     validate_future_datetime(start_time)
 
-    resource = db.query(Resource).filter(Resource.id == data.resource_id, Resource.is_active == True).first()
+    # Lock the resource for update to handle concurrent booking requests safely
+    resource = db.query(Resource).filter(Resource.id == data.resource_id, Resource.is_active == True).with_for_update().first()
     if not resource:
         from utils.exceptions import ResourceNotFoundError
         raise ResourceNotFoundError()
@@ -194,7 +195,8 @@ def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_us
     validate_future_datetime(next_start)
     validate_time_range(next_start, next_end)
 
-    resource = db.query(Resource).filter(Resource.id == next_resource_id, Resource.is_active == True).first()
+    # Lock the resource for update to prevent race conditions during updates
+    resource = db.query(Resource).filter(Resource.id == next_resource_id, Resource.is_active == True).with_for_update().first()
     if not resource:
         from utils.exceptions import ResourceNotFoundError
         raise ResourceNotFoundError()
