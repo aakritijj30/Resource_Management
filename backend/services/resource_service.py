@@ -46,3 +46,11 @@ def deactivate_resource(db: Session, resource_id: int) -> Resource:
     db.commit()
     db.refresh(resource)
     return resource
+
+
+def reactivate_resource(db: Session, resource_id: int) -> Resource:
+    resource = get_resource_by_id(db, resource_id)
+    resource.is_active = True
+    db.commit()
+    db.refresh(resource)
+    return resource

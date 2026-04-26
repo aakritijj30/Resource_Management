@@ -4,7 +4,7 @@ from typing import List, Optional
 from schemas.resource import ResourceCreate, ResourceOut, ResourceUpdate
 from schemas.policy import PolicyCreate, PolicyUpdate, PolicyOut
 from schemas.booking import BookingOut
-from services.resource_service import get_all_resources, get_resource_by_id, create_resource, update_resource, deactivate_resource
+from services.resource_service import get_all_resources, get_resource_by_id, create_resource, update_resource, deactivate_resource, reactivate_resource
 from services.policy_service import upsert_policy, get_policy
 from services.booking_service import get_resource_bookings
 from services.audit_service import log_action
@@ -61,6 +61,15 @@ def deactivate(resource_id: int, db: Session = Depends(get_db), current_user: Us
     log_action(db, current_user.id, AuditActionEnum.resource_deactivated, "resource", resource_id)
     db.commit()
     return {"message": "Resource deactivated", "id": resource_id}
+
+
+@router.patch("/{resource_id}/reactivate", dependencies=[Depends(require_role(RoleEnum.admin))])
+@router.patch("/{resource_id}/reactivate/", dependencies=[Depends(require_role(RoleEnum.admin))])
+def reactivate(resource_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    resource = reactivate_resource(db, resource_id)
+    log_action(db, current_user.id, AuditActionEnum.resource_reactivated, "resource", resource_id)
+    db.commit()
+    return {"message": "Resource reactivated", "id": resource_id}
 
 
 @router.get("/{resource_id}/policy", response_model=PolicyOut)

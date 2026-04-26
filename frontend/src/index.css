@@ -161,7 +161,11 @@
   }
 
   .sidebar-link.active {
-    @apply bg-primary-100 text-primary-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] font-bold;
+    @apply bg-primary-600 text-white shadow-lg shadow-primary-500/20 font-bold scale-[1.02] border-transparent;
+  }
+
+  .sidebar-link.active span:first-child {
+    @apply bg-white/10 border-white/20 text-white shadow-none;
   }
 
   .glass {

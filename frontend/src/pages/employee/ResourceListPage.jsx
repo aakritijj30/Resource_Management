@@ -85,7 +85,7 @@ export default function ResourceListPage() {
                   className={clsx(
                     'flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all',
                     scopeFilter === tab.key
-                      ? 'border-primary-200 bg-primary-50 text-primary-700 shadow-sm'
+                      ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-500/20 scale-[1.02]'
                       : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 hover:text-surface-900'
                   )}
                 >
@@ -112,7 +112,7 @@ export default function ResourceListPage() {
                 className={clsx(
                   'rounded-full border px-4 py-2 text-sm font-medium transition-all',
                   approvalFilter === 'all'
-                    ? 'border-primary-200 bg-primary-50 text-primary-700 shadow-sm'
+                    ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-500/20 scale-[1.02]'
                     : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 hover:text-surface-900'
                 )}
               >
@@ -123,7 +123,7 @@ export default function ResourceListPage() {
                 className={clsx(
                   'rounded-full border px-4 py-2 text-sm font-medium transition-all',
                   approvalFilter === 'required'
-                    ? 'border-amber-200 bg-amber-50 text-amber-700 shadow-sm'
+                    ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-500/20 scale-[1.02]'
                     : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 hover:text-surface-900'
                 )}
               >
@@ -134,7 +134,7 @@ export default function ResourceListPage() {
                 className={clsx(
                   'rounded-full border px-4 py-2 text-sm font-medium transition-all',
                   approvalFilter === 'not_required'
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm'
+                    ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-500/20 scale-[1.02]'
                     : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 hover:text-surface-900'
                 )}
               >

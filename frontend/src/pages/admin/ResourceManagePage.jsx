@@ -3,7 +3,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import EmptyState from '../../components/EmptyState';
 import ConfirmModal from '../../components/ConfirmModal';
 import ErrorMessage from '../../components/ErrorMessage';
-import { useResources, useCreateResource, useDeactivateResource } from '../../hooks/useResources';
+import { useResources, useCreateResource, useDeactivateResource, useReactivateResource } from '../../hooks/useResources';
 
 import { useQuery } from '@tanstack/react-query';
 import { getDepartments } from '../../api/departmentApi';
@@ -20,11 +20,13 @@ export default function ResourceManagePage() {
 
   const createResource = useCreateResource();
   const deactivateResource = useDeactivateResource();
+  const reactivateResource = useReactivateResource();
 
   const [showForm, setShowForm] = useState(false);
   const [deactivateId, setDeactivateId] = useState(null);
   const [error, setError] = useState(null);
   const [scopeFilter, setScopeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
   const [form, setForm] = useState({
     name: '',
     type: 'conference_room',
@@ -36,9 +38,21 @@ export default function ResourceManagePage() {
   });
 
   const filtered = resources.filter(r => {
-    if (scopeFilter === 'common') return r.department_id === null;
-    if (scopeFilter !== 'all') return r.department_id === scopeFilter;
-    return true;
+    // Department Filter
+    const matchesScope = scopeFilter === 'all' 
+      ? true 
+      : scopeFilter === 'common' 
+        ? r.department_id === null 
+        : r.department_id === scopeFilter;
+    
+    // Status Filter
+    const matchesStatus = statusFilter === 'all'
+      ? true
+      : statusFilter === 'active'
+        ? r.is_active === true
+        : r.is_active === false;
+
+    return matchesScope && matchesStatus;
   });
 
   const handleCreate = async (e) => {
@@ -79,25 +93,52 @@ export default function ResourceManagePage() {
         </div>
       </section>
 
-      {/* Admin Scope Filter */}
+      {/* Admin Filters */}
       <div className="card mb-8 bg-white/80 backdrop-blur-md border-surface-200/60 shadow-xl shadow-surface-900/5">
-        <div className="space-y-3">
-          <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest flex items-center gap-2">
-            <LayoutGrid size={12} /> Filter Resources by Department
-          </p>
-          <div className="relative w-full max-w-sm">
-            <select
-              value={scopeFilter}
-              onChange={(e) => setScopeFilter(e.target.value === 'all' || e.target.value === 'common' ? e.target.value : parseInt(e.target.value))}
-              className="w-full appearance-none bg-surface-50 border border-surface-200 text-surface-900 text-sm rounded-xl px-4 py-3 pr-10 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none font-medium cursor-pointer hover:bg-white"
-            >
-              <option value="all">All Resources (Org-Wide)</option>
-              <option value="common">Common Resources (No Dept)</option>
-              {departments.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest flex items-center gap-2">
+              <LayoutGrid size={12} /> Filter by Department
+            </p>
+            <div className="relative w-full max-w-sm">
+              <select
+                value={scopeFilter}
+                onChange={(e) => setScopeFilter(e.target.value === 'all' || e.target.value === 'common' ? e.target.value : parseInt(e.target.value))}
+                className="w-full appearance-none bg-surface-50 border border-surface-200 text-surface-900 text-sm rounded-xl px-4 py-3 pr-10 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none font-medium cursor-pointer hover:bg-white"
+              >
+                <option value="all">All Resources (Org-Wide)</option>
+                <option value="common">Common Resources (No Dept)</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="space-y-3 lg:text-right flex flex-col lg:items-end">
+            <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest flex items-center gap-2 lg:justify-end">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary-500" /> Filter by Status
+            </p>
+            <div className="flex bg-surface-100 p-1 rounded-2xl w-fit shadow-inner">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'active', label: 'Active' },
+                { key: 'inactive', label: 'Inactive' }
+              ].map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => setStatusFilter(s.key)}
+                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${
+                    statusFilter === s.key 
+                    ? 'bg-primary-600 text-white shadow-md scale-105' 
+                    : 'text-surface-500 hover:text-surface-700'
+                  }`}
+                >
+                  {s.label}
+                </button>
               ))}
-            </select>
-            <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" />
+            </div>
           </div>
         </div>
       </div>
@@ -200,13 +241,28 @@ export default function ResourceManagePage() {
                 </div>
               </div>
 
-              {r.is_active && (
+              {r.is_active ? (
                 <button
                   id={`btn-deactivate-${r.id}`}
                   className="rounded-xl border border-rose-200 bg-white px-5 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 shadow-sm md:mr-2"
                   onClick={() => setDeactivateId(r.id)}
                 >
                   Deactivate
+                </button>
+              ) : (
+                <button
+                  id={`btn-reactivate-${r.id}`}
+                  className="rounded-xl border border-emerald-200 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 shadow-sm md:mr-2"
+                  onClick={async () => {
+                    try {
+                      await reactivateResource.mutateAsync(r.id);
+                    } catch (err) {
+                      setError(err);
+                    }
+                  }}
+                  disabled={reactivateResource.isPending}
+                >
+                  {reactivateResource.isPending ? 'Restoring...' : 'Reactivate'}
                 </button>
               )}
             </div>

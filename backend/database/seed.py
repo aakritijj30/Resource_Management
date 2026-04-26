@@ -5,7 +5,7 @@ Does NOT clear the database. Use 'upsert' logic to prevent duplicates.
 import os
 import sys
 from datetime import datetime
-from sqlalchemy import text
+from sqlalchemy import text, func
 from sqlalchemy.orm import Session
 
 # Add the parent directory to sys.path
@@ -84,48 +84,60 @@ def seed_data():
         # Part 3: Restore Resources
         print("Syncing 32 Resources...")
         resources_list = [
-            {'name': '3D Printer Station', 'type': ResourceTypeEnum.equipment, 'dept_id': None, 'img': '/rooms/printer.png'},
-            {'name': 'Parking Slot P1', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/parking.webp'},
-            {'name': 'Parking Slot P2', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/parking.webp'},
-            {'name': 'Standard Cubicle A', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/cubicle1.jpg'},
-            {'name': 'Standard Cubicle B', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/cubicle2.jpg'},
-            {'name': 'Bay Desk 1', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Bay Desk 2', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Bay Desk 3', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Bay Desk 4', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Bay Desk 5', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Bay Desk 6', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Bay Desk 7', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Bay Desk 8', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Bay Desk 9', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Bay Desk 10', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg'},
-            {'name': 'Main Conference Room ', 'type': ResourceTypeEnum.conference_room, 'dept_id': None, 'img': '/rooms/room8.webp'},
-            {'name': 'Hoysala', 'type': ResourceTypeEnum.conference_room, 'dept_id': 4, 'img': '/rooms/croom1.webp'},
-            {'name': 'Vijayanagara', 'type': ResourceTypeEnum.conference_room, 'dept_id': 2, 'img': '/rooms/croom2.webp'},
-            {'name': 'Wadeyars', 'type': ResourceTypeEnum.conference_room, 'dept_id': 2, 'img': '/rooms/room2'},
-            {'name': 'Kadamba', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/room6.webp'},
-            {'name': 'Ashoka', 'type': ResourceTypeEnum.conference_room, 'dept_id': 5, 'img': '/rooms/ashoka.webp'},
-            {'name': 'Sahyadri', 'type': ResourceTypeEnum.conference_room, 'dept_id': 5, 'img': '/rooms/sahyadri.png'},
-            {'name': 'Maurya', 'type': ResourceTypeEnum.conference_room, 'dept_id': 4, 'img': '/rooms/maurya.webp'},
-            {'name': 'Indus', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/indus.webp'},
-            {'name': 'Ganga', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/ganga.webp'},
-            {'name': 'Kaveri', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/kaveri.png'},
-            {'name': 'Ai first lab', 'type': ResourceTypeEnum.lab, 'dept_id': 3, 'img': '/rooms/ai_lab.png'},
-            {'name': 'Moksha', 'type': ResourceTypeEnum.lab, 'dept_id': 3, 'img': '/rooms/moksha.jpg'},
-            {'name': 'Nalanda', 'type': ResourceTypeEnum.lab, 'dept_id': 1, 'img': '/rooms/nalanda.webp'},
-            {'name': 'Mantra', 'type': ResourceTypeEnum.lab, 'dept_id': 1, 'img': '/rooms/mantra.webp'},
-            {'name': 'IT storage 1', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/it_storage.png'},
-            {'name': 'Server room 2', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/server.png'}
+            {'name': '3D Printer Station', 'type': ResourceTypeEnum.equipment, 'dept_id': None, 'img': '/rooms/printer.png', 'loc': 'Ground Floor'},
+            {'name': 'Parking Slot P1', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/parking.webp', 'loc': 'Ground Floor'},
+            {'name': 'Parking Slot P2', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/parking.webp', 'loc': 'Ground Floor'},
+            {'name': 'Standard Cubicle A', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/cubicle1.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Standard Cubicle B', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/cubicle2.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 1', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 2', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 3', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 4', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 5', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 6', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 7', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 8', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 9', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Bay Desk 10', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/bay.jpg', 'loc': 'Ground Floor'},
+            {'name': 'Main Conference Room ', 'type': ResourceTypeEnum.conference_room, 'dept_id': None, 'img': '/rooms/room8.webp', 'loc': 'Ground Floor'},
+            {'name': 'Hoysala', 'type': ResourceTypeEnum.conference_room, 'dept_id': 4, 'img': '/rooms/croom1.webp', 'loc': '4th Floor'},
+            {'name': 'Vijayanagara', 'type': ResourceTypeEnum.conference_room, 'dept_id': 2, 'img': '/rooms/croom2.webp', 'loc': '2nd Floor'},
+            {'name': 'Wadeyars', 'type': ResourceTypeEnum.conference_room, 'dept_id': 2, 'img': '/rooms/room2.webp', 'loc': '2nd Floor'},
+            {'name': 'Kadamba', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/room6.webp', 'loc': 'Ground Floor'},
+            {'name': 'Ashoka', 'type': ResourceTypeEnum.conference_room, 'dept_id': 5, 'img': '/rooms/ashoka.webp', 'loc': '5th Floor'},
+            {'name': 'Sahyadri', 'type': ResourceTypeEnum.conference_room, 'dept_id': 5, 'img': '/rooms/sahyadri.png', 'loc': '5th Floor'},
+            {'name': 'Maurya', 'type': ResourceTypeEnum.conference_room, 'dept_id': 4, 'img': '/rooms/maurya.webp', 'loc': '4th Floor'},
+            {'name': 'Indus', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/indus.webp', 'loc': 'Ground Floor'},
+            {'name': 'Ganga', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/ganga.webp', 'loc': 'Ground Floor'},
+            {'name': 'Kaveri', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/kaveri.png', 'loc': 'Ground Floor'},
+            {'name': 'Ai first lab', 'type': ResourceTypeEnum.lab, 'dept_id': 3, 'img': '/rooms/ai_lab.png', 'loc': '3rd Floor'},
+            {'name': 'Moksha', 'type': ResourceTypeEnum.lab, 'dept_id': 3, 'img': '/rooms/moksha.jpg', 'loc': '3rd Floor'},
+            {'name': 'Nalanda', 'type': ResourceTypeEnum.lab, 'dept_id': 1, 'img': '/rooms/nalanda.webp', 'loc': '1st Floor'},
+            {'name': 'Mantra', 'type': ResourceTypeEnum.lab, 'dept_id': 1, 'img': '/rooms/mantra.webp', 'loc': '1st Floor'},
+            {'name': 'IT storage 1', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/it_storage.png', 'loc': 'Ground Floor'},
+            {'name': 'Server room 2', 'type': ResourceTypeEnum.other, 'dept_id': None, 'img': '/rooms/server.png', 'loc': 'Ground Floor'}
         ]
 
         for r_data in resources_list:
-            existing = db.query(Resource).filter(Resource.name == r_data["name"]).first()
-            if not existing:
+            res_name = r_data["name"].strip()
+            # Use func.trim to catch resources that have accidental trailing spaces in the DB
+            existing = db.query(Resource).filter(func.trim(Resource.name).ilike(res_name)).first()
+            
+            if existing:
+                # Update location and other fields
+                existing.name = res_name
+                existing.location = r_data["loc"]
+                existing.image_url = r_data["img"]
+                existing.type = r_data["type"]
+                existing.department_id = r_data["dept_id"]
+                db.flush()
+            else:
                 res = Resource(
-                    name=r_data["name"],
+                    name=res_name,
                     type=r_data["type"],
                     department_id=r_data["dept_id"],
                     image_url=r_data["img"],
+                    location=r_data["loc"],
                     capacity=10 if r_data["type"] != ResourceTypeEnum.other else 1,
                     approval_required=True if r_data["dept_id"] else False
                 )

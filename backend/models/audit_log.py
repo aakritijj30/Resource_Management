@@ -16,6 +16,7 @@ class AuditActionEnum(str, enum.Enum):
     resource_created = "resource_created"
     resource_updated = "resource_updated"
     resource_deactivated = "resource_deactivated"
+    resource_reactivated = "resource_reactivated"
     maintenance_created = "maintenance_created"
     maintenance_deleted = "maintenance_deleted"
     user_login = "user_login"

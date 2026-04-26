@@ -82,7 +82,7 @@ export default function EmployeeApprovalsPage() {
                placeholder="Search by resource or user..." 
                value={search}
                onChange={(e) => setSearch(e.target.value)}
-               className="w-full pl-11 pr-4 py-3 rounded-2xl border border-surface-200 bg-surface-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+               className="w-full pl-11 pr-4 py-3 rounded-2xl border border-surface-200 bg-surface-50 text-surface-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
              />
            </div>
         </div>
