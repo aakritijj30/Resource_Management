@@ -9,6 +9,7 @@ def get_policy(db: Session, resource_id: int) -> ResourcePolicy:
     return db.query(ResourcePolicy).filter(ResourcePolicy.resource_id == resource_id).first()
 
 def upsert_policy(db: Session, resource_id: int, policy_data: dict) -> ResourcePolicy:
+    from models.resource import Resource
     policy = get_policy(db, resource_id)
     if not policy:
         policy = ResourcePolicy(resource_id=resource_id, **policy_data)
@@ -16,6 +17,13 @@ def upsert_policy(db: Session, resource_id: int, policy_data: dict) -> ResourceP
     else:
         for key, value in policy_data.items():
             setattr(policy, key, value)
+    
+    # Sync capacity with Resource if provided
+    if "max_attendees" in policy_data and policy_data["max_attendees"] is not None:
+        resource = db.query(Resource).filter(Resource.id == resource_id).first()
+        if resource:
+            resource.capacity = policy_data["max_attendees"]
+            
     db.flush()
     return policy
 

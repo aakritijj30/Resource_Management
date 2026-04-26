@@ -5,7 +5,7 @@ from services.report_service import get_report_summary, get_top_resources, get_d
 from models.user import User, RoleEnum
 from utils.dependencies import get_db, require_role
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+router = APIRouter(prefix="/reports", tags=["reports"], redirect_slashes=False)
 
 
 @router.get("/usage", dependencies=[Depends(require_role(RoleEnum.admin, RoleEnum.manager))])

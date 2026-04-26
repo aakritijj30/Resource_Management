@@ -27,6 +27,7 @@ class BookingCreate(BaseModel):
     end_time: datetime
     purpose: str
     attendees: int = 1
+    force_preempt: bool = False
 
 
 class BookingUpdate(BaseModel):

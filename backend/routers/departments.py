@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from models.department import Department
 from utils.dependencies import get_db
 
-router = APIRouter(prefix="/departments", tags=["departments"])
+router = APIRouter(prefix="/departments", tags=["departments"], redirect_slashes=False)
 
 
 class DepartmentOut(BaseModel):

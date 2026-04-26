@@ -12,6 +12,7 @@ def get_all_resources(db: Session, skip: int = 0, limit: int = 100, active_only:
         q = q.filter(Resource.is_active == True)
     if department_id is not None:
         q = q.filter(or_(Resource.department_id == None, Resource.department_id == department_id))
+    
     return q.offset(skip).limit(limit).all()
 
 

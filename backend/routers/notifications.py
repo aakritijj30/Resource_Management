@@ -7,7 +7,7 @@ from schemas.notification import NotificationOut, NotificationUpdate
 from utils.dependencies import get_db, require_role
 from models.user import RoleEnum
 
-router = APIRouter(prefix="/notifications", tags=["notifications"])
+router = APIRouter(prefix="/notifications", tags=["notifications"], redirect_slashes=False)
 
 
 @router.get("/", response_model=List[NotificationOut])

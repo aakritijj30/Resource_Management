@@ -5,8 +5,9 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { useResource, useResourceBookings } from '../../hooks/useResources';
 import { useBooking, useCreateBooking, useUpdateBooking } from '../../hooks/useBookings';
 import { isAfterNowIST, toISTDateTimeInput } from '../../utils/time';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function BookingFormPage({ isEdit = false }) {
   const { resourceId: paramResourceId, id: bookingId } = useParams();
@@ -29,6 +30,7 @@ export default function BookingFormPage({ isEdit = false }) {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [preemptionData, setPreemptionData] = useState(null);
   const minStartDate = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
@@ -44,8 +46,8 @@ export default function BookingFormPage({ isEdit = false }) {
     }
   }, [isEdit, booking]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, force = false) => {
+    if (e) e.preventDefault();
     setError(null);
     
     if (!form.start_date || !form.start_time || !form.end_date || !form.end_time) {
@@ -64,31 +66,30 @@ export default function BookingFormPage({ isEdit = false }) {
       setError(new Error('End time must be after start time.'));
       return;
     }
+
+    const payload = {
+      resource_id: parseInt(resourceId),
+      start_time: startDateTime,
+      end_time: endDateTime,
+      purpose: form.purpose,
+      attendees: parseInt(form.attendees),
+      force_preempt: force
+    };
+
     try {
       if (isEdit) {
-        await updateBooking.mutateAsync({
-          id: bookingId,
-          data: {
-            resource_id: parseInt(resourceId),
-            start_time: startDateTime,
-            end_time: endDateTime,
-            purpose: form.purpose,
-            attendees: parseInt(form.attendees),
-          }
-        });
+        await updateBooking.mutateAsync({ id: bookingId, data: payload });
       } else {
-        await createBooking.mutateAsync({
-        resource_id: parseInt(resourceId),
-        start_time: startDateTime,
-        end_time: endDateTime,
-        purpose: form.purpose,
-        attendees: parseInt(form.attendees),
-      });
+        await createBooking.mutateAsync(payload);
       }
       setSuccess(true);
       setTimeout(() => navigate('/employee/bookings'), 1500);
     } catch (err) {
-      setError(err);
+      if (err.response?.status === 409 && err.response?.data?.detail?.type === 'preemption_required') {
+        setPreemptionData(err.response.data.detail);
+      } else {
+        setError(err);
+      }
     }
   };
 
@@ -107,6 +108,19 @@ export default function BookingFormPage({ isEdit = false }) {
 
   return (
     <div className="w-full flex-col flex animate-fade-in relative z-10 max-w-6xl mx-auto">
+      <ConfirmModal
+        isOpen={!!preemptionData}
+        title="Manager Priority Alert"
+        message={preemptionData?.message || "This resource is already booked. Do you want to use your manager priority to override this booking?"}
+        confirmLabel="Yes, Override"
+        danger={true}
+        onConfirm={() => {
+          const data = preemptionData;
+          setPreemptionData(null);
+          handleSubmit(null, true);
+        }}
+        onCancel={() => setPreemptionData(null)}
+      />
       <button 
         onClick={() => navigate(-1)} 
         className="flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors mb-6 self-start"

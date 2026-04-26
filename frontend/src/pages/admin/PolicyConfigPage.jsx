@@ -67,24 +67,31 @@ function PolicyForm({ resource, onClose }) {
           { key: 'office_hours_start',    label: 'Open Hour (24h)' },
           { key: 'office_hours_end',      label: 'Close Hour (24h)' },
           { key: 'max_attendees',         label: 'Max Attendees' },
-        ].map(f => (
-          <div key={f.key} className="bg-surface-50 rounded-2xl p-4 border border-surface-100 transition-colors focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-500/10">
-            <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-primary-600 mb-3">
-              {ICONS[f.key] || <Settings2 size={16} />}
-              {f.label}
-            </label>
-            <div className="relative">
-              <input 
-                type="number" 
-                step={f.key.includes('duration') ? "0.5" : "1"}
-                min="0"
-                className="w-full bg-transparent text-xl font-display font-semibold text-surface-900 focus:outline-none" 
-                value={currentPolicy[f.key] ?? ''}
-                onChange={e => setForm(p => ({ ...(p || currentPolicy), [f.key]: e.target.value === '' ? null : parseFloat(e.target.value) }))} 
-              />
+        ].map(f => {
+          let label = f.label;
+          if (f.key === 'max_attendees') {
+            const isParking = resource.name.toLowerCase().includes('parking') || resource.type === 'parking';
+            label = isParking ? 'Parking Capacity' : 'Max Attendees/Capacity';
+          }
+          return (
+            <div key={f.key} className="bg-surface-50 rounded-2xl p-4 border border-surface-100 transition-colors focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-500/10">
+              <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-primary-600 mb-3">
+                {ICONS[f.key] || <Settings2 size={16} />}
+                {label}
+              </label>
+              <div className="relative">
+                <input 
+                  type="number" 
+                  step={f.key.includes('duration') ? "0.5" : "1"}
+                  min="0"
+                  className="w-full bg-transparent text-xl font-display font-semibold text-surface-900 focus:outline-none" 
+                  value={currentPolicy[f.key] ?? ''}
+                  onChange={e => setForm(p => ({ ...(p || currentPolicy), [f.key]: e.target.value === '' ? null : parseFloat(e.target.value) }))} 
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="bg-surface-50 rounded-2xl p-4 border border-surface-100">

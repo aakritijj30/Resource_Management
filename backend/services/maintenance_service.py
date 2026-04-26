@@ -14,25 +14,30 @@ def get_maintenance_blocks(db: Session):
         b.resource_name = b.resource.name if b.resource else f"Resource #{b.resource_id}"
     return blocks
 
-def get_relevant_maintenance_blocks(db: Session, user_dept_id: int):
-    """Returns maintenance blocks for common resources or resources in the user's department."""
+def get_relevant_maintenance_blocks(db: Session, user_dept_id: int, is_admin: bool = False):
+    """Returns maintenance blocks for common resources or resources in the user's department. Admins see all."""
     from models.resource import Resource
     from utils.timezone import now_local_naive
     
-    blocks = (
-        db.query(MaintenanceBlock)
-        .options(joinedload(MaintenanceBlock.resource))
-        .join(Resource)
-        .filter(
-            (Resource.department_id == None) | (Resource.department_id == user_dept_id),
-            MaintenanceBlock.end_time >= now_local_naive()
+    query = db.query(MaintenanceBlock).options(joinedload(MaintenanceBlock.resource)).join(Resource)
+    
+    if is_admin:
+        # Admins see everything org-wide
+        blocks = query.filter(MaintenanceBlock.end_time >= now_local_naive()).all()
+    else:
+        # Employees/Managers see their dept + common
+        blocks = (
+            query.filter(
+                (Resource.department_id == None) | (Resource.department_id == user_dept_id),
+                MaintenanceBlock.end_time >= now_local_naive()
+            )
+            .all()
         )
-        .order_by(MaintenanceBlock.start_time.asc())
-        .all()
-    )
-    for b in blocks:
+    
+    results = sorted(blocks, key=lambda x: x.start_time)
+    for b in results:
         b.resource_name = b.resource.name if b.resource else f"Resource #{b.resource_id}"
-    return blocks
+    return results
 
 def create_maintenance_block(db: Session, data: MaintenanceCreate, admin_id: int):
     start_time = to_local_naive(data.start_time)

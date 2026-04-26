@@ -57,7 +57,7 @@ app.include_router(notifications_router)
 def on_startup():
     """Create all tables on startup (use Alembic in production)."""
     Base.metadata.create_all(bind=engine)
-    _ensure_resource_department_column()
+    _ensure_department_id_column()
     _ensure_audit_action_enum()
     _ensure_resource_policies_columns()
     db = SessionLocal()
@@ -71,24 +71,32 @@ def on_startup():
                 dirty = True
         if dirty:
             db.commit()
+    except Exception as e:
+        print(f"DEBUG: Skipping policy sync: {e}")
+        db.rollback()
     finally:
         db.close()
 
 
-def _ensure_resource_department_column():
+def _ensure_department_id_column():
     """
     Backfill older databases that were created before resources.department_id existed.
-
-    The current model relies on this column for manager/admin filtering, so we add it
-    automatically when the live database was created from an older schema.
     """
     db = SessionLocal()
     try:
+        # Check if table exists first to avoid crashes
+        from sqlalchemy import inspect
         inspector = inspect(db.bind)
+        if not inspector.has_table("resources"):
+            return
+
         resource_columns = {col["name"] for col in inspector.get_columns("resources")}
         if "department_id" not in resource_columns:
             db.execute(text("ALTER TABLE resources ADD COLUMN department_id INTEGER"))
             db.commit()
+    except Exception as e:
+        print(f"DEBUG: Skipping department_id check: {e}")
+        db.rollback()
     finally:
         db.close()
 
@@ -116,22 +124,21 @@ def _ensure_resource_policies_columns():
 def _ensure_audit_action_enum():
     """
     Backfill older Postgres enum types that predate booking_updated.
-
-    The database may already exist with auditactionenum created before the code
-    knew about booking edits, so we add the missing enum value when necessary.
     """
     db = SessionLocal()
     try:
-        db.execute(text("DO $$ BEGIN "
-                        "IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
-                        "WHERE t.typname = 'auditactionenum' AND e.enumlabel = 'booking_updated') THEN "
-                        "ALTER TYPE auditactionenum ADD VALUE 'booking_updated'; "
-                        "END IF; "
-                        "END $$;"))
-        db.commit()
-    except Exception:
+        # Check if we are on Postgres first
+        if "postgresql" in str(db.bind.url):
+            db.execute(text("DO $$ BEGIN "
+                            "IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
+                            "WHERE t.typname = 'auditactionenum' AND e.enumlabel = 'booking_updated') THEN "
+                            "ALTER TYPE auditactionenum ADD VALUE 'booking_updated'; "
+                            "END IF; "
+                            "END $$;"))
+            db.commit()
+    except Exception as e:
+        print(f"DEBUG: Skipping audit enum check (likely already exists or not Postgres): {e}")
         db.rollback()
-        raise
     finally:
         db.close()
 

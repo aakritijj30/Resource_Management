@@ -19,7 +19,7 @@ from utils.timezone import now_local_naive, to_local_naive
 from datetime import datetime
 
 
-def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datetime, end_time: datetime, current_user: User, exclude_booking_id: int = None):
+def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datetime, end_time: datetime, current_user: User, force_preempt: bool = False, exclude_booking_id: int = None):
     """If manager/admin, preempt employee bookings. Otherwise raise conflict."""
     # Get resource capacity
     resource = db.query(Resource).filter(Resource.id == resource_id).first()
@@ -27,12 +27,8 @@ def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datet
         return
 
     # Determine if this resource supports multiple concurrent bookings (Capacity-based)
-    # The user specifically requested this ONLY for parking slots.
     is_parking = "parking" in (resource.name or "").lower()
-    
     if is_parking:
-        # For parking, we skip the hard overlap check. 
-        # check_capacity() will handle the sum of concurrent bookings.
         return
 
     if current_user.role not in [RoleEnum.manager, RoleEnum.admin]:
@@ -56,17 +52,33 @@ def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datet
     if any(b.user.role in [RoleEnum.manager, RoleEnum.admin] for b in conflict_list):
         check_booking_conflict(db, resource_id, start_time, end_time, exclude_booking_id)
 
+    # If force_preempt is False, we stop and warn the manager.
+    if not force_preempt:
+        from fastapi import HTTPException
+        conflict_details = [
+            {"id": b.id, "user": b.user.full_name, "start": b.start_time.isoformat(), "end": b.end_time.isoformat()}
+            for b in conflict_list
+        ]
+        raise HTTPException(
+            status_code=409, 
+            detail={
+                "type": "preemption_required", 
+                "message": f"This slot is already booked by {conflict_list[0].user.full_name}. Overriding will cancel their booking.",
+                "conflicts": conflict_details
+            }
+        )
+
     # Preempt employee bookings
     for b in conflict_list:
         b.status = BookingStatusEnum.cancelled
         if b.approval:
             from models.approval import ApprovalDecisionEnum
             b.approval.decision = ApprovalDecisionEnum.rejected
-            b.approval.comment = f"Auto-cancelled: Priority booking by {current_user.role.value}."
+            b.approval.comment = f"Auto-cancelled: Priority booking by {current_user.role.value if hasattr(current_user.role, 'value') else current_user.role}."
             b.approval.decided_at = now_local_naive()
 
         log_action(db, current_user.id, AuditActionEnum.booking_cancelled, "booking", b.id,
-                   {"reason": f"Priority booking by {current_user.role.value} {current_user.full_name}", "preempted_by_role": current_user.role.value})
+                   {"reason": f"Priority booking by {current_user.role.value if hasattr(current_user.role, 'value') else current_user.role} {current_user.full_name}", "preempted_by_role": current_user.role.value if hasattr(current_user.role, 'value') else current_user.role})
         
         notif = Notification(
             user_id=b.user_id,
@@ -127,7 +139,7 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> list
         # Validation checks per day
         enforce_policy(db, data.resource_id, slot_start, slot_end)
         check_maintenance_block(db, data.resource_id, slot_start, slot_end)
-        check_and_preempt_conflicts(db, data.resource_id, slot_start, slot_end, current_user)
+        check_and_preempt_conflicts(db, data.resource_id, slot_start, slot_end, current_user, force_preempt=data.force_preempt)
         check_capacity(db, data.resource_id, slot_start, slot_end, data.attendees)
 
         booking = Booking(
@@ -189,7 +201,7 @@ def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_us
 
     enforce_policy(db, next_resource_id, next_start, next_end)
     check_maintenance_block(db, next_resource_id, next_start, next_end)
-    check_and_preempt_conflicts(db, next_resource_id, next_start, next_end, current_user, exclude_booking_id=booking.id)
+    check_and_preempt_conflicts(db, next_resource_id, next_start, next_end, current_user, force_preempt=getattr(data, 'force_preempt', False), exclude_booking_id=booking.id)
     next_attendees = data.attendees if data.attendees is not None else booking.attendees
     check_capacity(db, next_resource_id, next_start, next_end, next_attendees, exclude_booking_id=booking.id)
 

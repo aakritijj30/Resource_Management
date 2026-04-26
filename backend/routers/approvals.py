@@ -6,10 +6,11 @@ from services.approval_service import get_pending_approvals, get_approval_histor
 from models.user import User, RoleEnum
 from utils.dependencies import get_db, require_role
 
-router = APIRouter(prefix="/approvals", tags=["approvals"])
+router = APIRouter(prefix="/approvals", tags=["approvals"], redirect_slashes=False)
 
 
 @router.get("/history", response_model=List[ApprovalOut])
+@router.get("/history/", response_model=List[ApprovalOut])
 def get_history(
     db: Session = Depends(get_db),
     manager: User = Depends(require_role(RoleEnum.manager, RoleEnum.admin))
@@ -18,6 +19,7 @@ def get_history(
 
 
 @router.get("/queue", response_model=List[ApprovalOut])
+@router.get("/queue/", response_model=List[ApprovalOut])
 def get_queue(
     db: Session = Depends(get_db),
     manager: User = Depends(require_role(RoleEnum.manager, RoleEnum.admin))
@@ -26,6 +28,7 @@ def get_queue(
 
 
 @router.get("/{approval_id}", response_model=ApprovalOut)
+@router.get("/{approval_id}/", response_model=ApprovalOut)
 def get_one(
     approval_id: int,
     db: Session = Depends(get_db),
@@ -35,6 +38,7 @@ def get_one(
 
 
 @router.post("/{approval_id}/decide", response_model=ApprovalOut)
+@router.post("/{approval_id}/decide/", response_model=ApprovalOut)
 def decide(
     approval_id: int,
     data: ApprovalDecide,

@@ -37,8 +37,8 @@ export default function ResourceListPage() {
     const matchType = typeFilter === 'all' || r.type === typeFilter;
     const matchSearch =
       r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.location?.toLowerCase().includes(search.toLowerCase()) ||
-      r.description?.toLowerCase().includes(search.toLowerCase());
+      (r.location || "").toLowerCase().includes(search.toLowerCase()) ||
+      (r.description || "").toLowerCase().includes(search.toLowerCase());
     
     const matchApproval = 
       approvalFilter === 'all' || 

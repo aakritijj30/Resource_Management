@@ -5,7 +5,7 @@ import ConfirmModal from '../../components/ConfirmModal'
 import ErrorMessage from '../../components/ErrorMessage'
 import { useResources } from '../../hooks/useResources'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '../../api/axiosInstance'
+import { getMaintenanceBlocks, createMaintenanceBlock, deleteMaintenanceBlock } from '../../api/maintenanceApi'
 import { formatISTDate, formatISTDateTime, isAfterNowIST, toISTDateTimeInput } from '../../utils/time'
 
 export default function MaintenanceBlockPage() {
@@ -13,14 +13,14 @@ export default function MaintenanceBlockPage() {
   const qc = useQueryClient()
   const { data: blocks = [], isLoading } = useQuery({
     queryKey: ['maintenance'],
-    queryFn: () => api.get('/maintenance').then(r => r.data)
+    queryFn: () => getMaintenanceBlocks().then(r => r.data)
   })
   const createBlock = useMutation({
-    mutationFn: (data) => api.post('/maintenance', data),
+    mutationFn: createMaintenanceBlock,
     onSuccess: () => qc.invalidateQueries(['maintenance'])
   })
   const deleteBlock = useMutation({
-    mutationFn: (id) => api.delete(`/maintenance/${id}`),
+    mutationFn: deleteMaintenanceBlock,
     onSuccess: () => qc.invalidateQueries(['maintenance'])
   })
 

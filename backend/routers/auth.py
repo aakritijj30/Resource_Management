@@ -10,7 +10,7 @@ from models.department import Department
 from models.audit_log import AuditActionEnum
 from services.audit_service import log_action
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"], redirect_slashes=False)
 
 
 def _auth_payload(user: User) -> dict:

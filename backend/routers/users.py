@@ -8,7 +8,7 @@ from models.user import User, RoleEnum
 from models.audit_log import AuditActionEnum
 from services.audit_service import log_action
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"], redirect_slashes=False)
 
 
 @router.get("/", response_model=List[UserOut], dependencies=[Depends(require_role(RoleEnum.admin))])

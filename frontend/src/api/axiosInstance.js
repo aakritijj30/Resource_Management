@@ -4,6 +4,8 @@ const api = axios.create({
   baseURL: '/api', // Route through Vite proxy
 });
 
+console.log('DEBUG: Axios Instance Created with baseURL:', api.defaults.baseURL);
+
 // Request interceptor: attach token
 api.interceptors.request.use(
   (config) => {

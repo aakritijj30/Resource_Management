@@ -12,9 +12,10 @@ from models.audit_log import AuditActionEnum
 from models.user import User, RoleEnum
 from utils.dependencies import get_db, get_current_user, require_role
 
-router = APIRouter(prefix="/resources", tags=["resources"])
+router = APIRouter(prefix="/resources", tags=["resources"], redirect_slashes=False)
 
 
+@router.get("", response_model=List[ResourceOut])
 @router.get("/", response_model=List[ResourceOut])
 def list_resources(
     db: Session = Depends(get_db),
@@ -24,11 +25,14 @@ def list_resources(
     active_only: bool = True
 ):
     # Admins see all resources; employees and managers see common + their dept
-    dept_filter = None if current_user.role == RoleEnum.admin else current_user.department_id
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    role_str = user_role.lower()
+    dept_filter = None if 'admin' in role_str else current_user.department_id
     return get_all_resources(db, skip, limit, active_only, department_id=dept_filter)
 
 
 @router.get("/{resource_id}", response_model=ResourceOut)
+@router.get("/{resource_id}/", response_model=ResourceOut)
 def get_resource(resource_id: int, db: Session = Depends(get_db)):
     return get_resource_by_id(db, resource_id)
 
@@ -42,6 +46,7 @@ def create(data: ResourceCreate, db: Session = Depends(get_db), current_user: Us
 
 
 @router.patch("/{resource_id}", response_model=ResourceOut, dependencies=[Depends(require_role(RoleEnum.admin))])
+@router.patch("/{resource_id}/", response_model=ResourceOut, dependencies=[Depends(require_role(RoleEnum.admin))])
 def update(resource_id: int, data: ResourceUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     resource = update_resource(db, resource_id, data)
     log_action(db, current_user.id, AuditActionEnum.resource_updated, "resource", resource_id)
@@ -49,7 +54,8 @@ def update(resource_id: int, data: ResourceUpdate, db: Session = Depends(get_db)
     return resource
 
 
-@router.delete("/{resource_id}", dependencies=[Depends(require_role(RoleEnum.admin))])
+@router.patch("/{resource_id}/deactivate", dependencies=[Depends(require_role(RoleEnum.admin))])
+@router.patch("/{resource_id}/deactivate/", dependencies=[Depends(require_role(RoleEnum.admin))])
 def deactivate(resource_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     resource = deactivate_resource(db, resource_id)
     log_action(db, current_user.id, AuditActionEnum.resource_deactivated, "resource", resource_id)
@@ -58,6 +64,7 @@ def deactivate(resource_id: int, db: Session = Depends(get_db), current_user: Us
 
 
 @router.get("/{resource_id}/policy", response_model=PolicyOut)
+@router.get("/{resource_id}/policy/", response_model=PolicyOut)
 def get_policy_route(resource_id: int, db: Session = Depends(get_db)):
     policy = get_policy(db, resource_id)
     if not policy:
@@ -67,6 +74,7 @@ def get_policy_route(resource_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{resource_id}/policy", response_model=PolicyOut, dependencies=[Depends(require_role(RoleEnum.admin))])
+@router.put("/{resource_id}/policy/", response_model=PolicyOut, dependencies=[Depends(require_role(RoleEnum.admin))])
 def set_policy(resource_id: int, data: PolicyUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     policy = upsert_policy(db, resource_id, data.model_dump(exclude_unset=True))
     log_action(db, current_user.id, AuditActionEnum.policy_updated, "resource_policy", resource_id)
@@ -75,5 +83,6 @@ def set_policy(resource_id: int, data: PolicyUpdate, db: Session = Depends(get_d
 
 
 @router.get("/{resource_id}/bookings", response_model=List[BookingOut])
+@router.get("/{resource_id}/bookings/", response_model=List[BookingOut])
 def list_resource_bookings(resource_id: int, db: Session = Depends(get_db)):
     return get_resource_bookings(db, resource_id)

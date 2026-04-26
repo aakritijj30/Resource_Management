@@ -2,8 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { getRelevantMaintenance } from '../../api/maintenanceApi';
 import { AlertTriangle, Clock, Calendar, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function MaintenancePanel() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  
   const { data: blocks = [], isLoading } = useQuery({
     queryKey: ['maintenance', 'relevant'],
     queryFn: () => getRelevantMaintenance().then(r => r.data)
@@ -28,13 +32,15 @@ export default function MaintenancePanel() {
             Maintenance Alerts
           </h3>
           <p className={`text-[10px] uppercase font-bold tracking-wider ${blocks.length > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-            {blocks.length > 0 ? 'Restricted Access' : 'All Systems Nominal'}
+            {blocks.length > 0 ? (isAdmin ? 'Org-Wide Restriction' : 'Restricted Access') : 'All Systems Nominal'}
           </p>
         </div>
       </div>
 
       {blocks.length === 0 ? (
-        <p className="text-xs text-emerald-700/70 italic">No upcoming maintenance blocks for your resources.</p>
+        <p className="text-xs text-emerald-700/70 italic">
+          {isAdmin ? 'No upcoming maintenance blocks for the organization.' : 'No upcoming maintenance blocks for your resources.'}
+        </p>
       ) : (
         <div className="space-y-3">
           <AnimatePresence>
