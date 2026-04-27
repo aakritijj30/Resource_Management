@@ -380,6 +380,7 @@ def get_bookings(
     for b in results:
         b.user_name = b.user.full_name if b.user else f"User #{b.user_id}"
         b.resource_name = b.resource.name if b.resource else f"Resource #{b.resource_id}"
+        b.department_id = b.user.department_id if b.user else None
         
     return results
 
@@ -404,6 +405,7 @@ def get_department_bookings(db: Session, manager: User, skip: int = 0, limit: in
     for b in results:
         b.user_name = b.user.full_name if b.user else f"User #{b.user_id}"
         b.resource_name = b.resource.name if b.resource else f"Resource #{b.resource_id}"
+        b.department_id = b.user.department_id if b.user else None
     
     return results
 
@@ -435,6 +437,7 @@ def get_booking_by_id(db: Session, booking_id: int, current_user: User) -> Booki
         
     booking.user_name = booking.user.full_name if booking.user else f"User #{booking.user_id}"
     booking.resource_name = booking.resource.name if booking.resource else f"Resource #{booking.resource_id}"
+    booking.department_id = booking.user.department_id if booking.user else None
     
     return booking
 

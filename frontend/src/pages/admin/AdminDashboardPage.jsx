@@ -3,13 +3,16 @@ import HeroSection from '../../components/dashboard/HeroSection';
 import StatCards from '../../components/dashboard/StatCards';
 import TodayBookings from '../../components/dashboard/TodayBookings';
 import { useUsageReport } from '../../hooks/useReports';
+import { useBookings } from '../../hooks/useBookings';
 import { motion } from 'framer-motion';
 import MaintenancePanel from '../../components/dashboard/MaintenancePanel';
+import CalendarWidget from '../../components/dashboard/CalendarWidget';
 import { Shield, Settings, Wrench, BarChart2, CheckCircle2 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
   const { data: report } = useUsageReport();
+  const { data: allBookings = [] } = useBookings({ mine_only: false });
 
   const STATS = report ? [
     { title: 'Total Bookings', value: report.total_bookings, icon: 'Layers' },
@@ -58,7 +61,9 @@ export default function AdminDashboardPage() {
           </motion.button>
         ))}
       </div>
-      <div className="grid grid-cols-1 mb-8">
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 items-start">
+        <CalendarWidget bookings={allBookings} role="admin" />
         <TodayBookings />
       </div>
     </div>

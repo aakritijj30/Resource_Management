@@ -1,17 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import api from '../../api/axiosInstance';
+import { useBookings } from '../../hooks/useBookings';
 import LoadingSpinner from '../LoadingSpinner';
 import StatusBadge from '../StatusBadge';
 import { formatISTTime, isTodayIST } from '../../utils/time';
 import { Clock, Plus } from 'lucide-react';
 
-export default function TodayBookings() {
+export default function TodayBookings({ mineOnly = false }) {
   const navigate = useNavigate();
-  const { data: bookings = [], isLoading } = useQuery({
-    queryKey: ['all-bookings'],
-    queryFn: () => api.get('/bookings').then(r => r.data)
-  });
+  const { data: bookings = [], isLoading } = useBookings({ mine_only: mineOnly });
 
   const todayBookings = bookings
     .filter(b => isTodayIST(b.start_time))

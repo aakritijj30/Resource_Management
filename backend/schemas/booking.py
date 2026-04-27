@@ -42,6 +42,7 @@ class BookingOut(BaseModel):
     id: int
     user_id: int
     resource_id: int
+    department_id: Optional[int] = None
     user_name: Optional[str] = None
     resource_name: Optional[str] = None
     start_time: datetime

@@ -85,19 +85,30 @@ export default function MyBookingsPage() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-4 md:flex-shrink-0">
+                    <div className="flex items-center gap-2 md:flex-shrink-0">
                       <StatusBadge status={b.status} />
                       {['pending', 'approved'].includes(b.status) && isAfterNowIST(b.end_time) && (
-                        <button
-                          id={`btn-cancel-${b.id}`}
-                          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setCancelId(b.id);
-                          }}
-                        >
-                          Cancel
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-primary-600 transition-colors hover:bg-primary-50"
+                            onClick={e => {
+                              e.stopPropagation();
+                              navigate(`/employee/bookings/${b.id}/edit`);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            id={`btn-cancel-${b.id}`}
+                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setCancelId(b.id);
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

@@ -6,6 +6,7 @@ import StatCards from '../../components/dashboard/StatCards';
 import TodayBookings from '../../components/dashboard/TodayBookings';
 import NotificationPanel from '../../components/dashboard/NotificationPanel';
 import MaintenancePanel from '../../components/dashboard/MaintenancePanel';
+import CalendarWidget from '../../components/dashboard/CalendarWidget';
 import { useBookings } from '../../hooks/useBookings';
 
 export default function DashboardPage() {
@@ -49,15 +50,18 @@ export default function DashboardPage() {
       {/* Stat Cards */}
       <StatCards stats={STATS} />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_0.45fr] items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start mt-8">
+        <CalendarWidget bookings={bookings} role="employee" />
+        <TodayBookings />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_0.45fr] items-start mt-8">
         <div className="space-y-6">
-          {/* Today's Bookings */}
-          <TodayBookings />
+          {/* Maintenance Panel moved here for better flow on employee dashboard */}
+           <MaintenancePanel />
         </div>
 
-        <div className="space-y-6 lg:sticky lg:top-6">
-           {/* Maintenance Panel */}
-           <MaintenancePanel />
+        <div className="space-y-6">
            {/* Notification Panel */}
            <NotificationPanel bookings={bookings} />
         </div>

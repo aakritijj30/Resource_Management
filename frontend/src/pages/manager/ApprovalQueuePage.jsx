@@ -1,13 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getApprovalQueue } from '../../api/approvalApi';
+import { useBookings, useDepartmentBookings } from '../../hooks/useBookings';
 import { formatISTDateTime } from '../../utils/time';
 import HeroSection from '../../components/dashboard/HeroSection';
+import CalendarWidget from '../../components/dashboard/CalendarWidget';
 
 import DeptUsageWidget from '../../components/dashboard/DeptUsageWidget';
 import { motion } from 'framer-motion';
 import { Clock, ArrowRight } from 'lucide-react';
 import MaintenancePanel from '../../components/dashboard/MaintenancePanel';
+import TodayBookings from '../../components/dashboard/TodayBookings';
 
 export default function ApprovalQueuePage() {
   const navigate = useNavigate();
@@ -16,12 +19,20 @@ export default function ApprovalQueuePage() {
     queryFn: () => getApprovalQueue().then(r => r.data)
   });
 
+  const { data: myBookings = [] } = useBookings({ mine_only: true });
+
   return (
     <div className="w-full flex-col flex animate-fade-in relative z-10">
       <HeroSection />
       <div className="my-8">
         <MaintenancePanel />
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 items-start">
+        <CalendarWidget bookings={myBookings} role="manager" />
+        <TodayBookings mineOnly={true} />
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] items-start">
         <DeptUsageWidget />
 
