@@ -7,9 +7,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BookingSummary from '../../components/BookingSummary';
 import { useDepartmentBookings } from '../../hooks/useBookings';
 
+import { useGlobalFilters } from '../../store/filterContext';
+
 export default function EmployeeApprovalsPage() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState('all'); // all, pending, approved, rejected
+  const { statusFilter: filter, setStatusFilter: setFilter } = useGlobalFilters();
   const [search, setSearch] = useState('');
   
   const { data: approvals = [], isLoading: isApprovalsLoading } = useQuery({
@@ -66,7 +68,7 @@ export default function EmployeeApprovalsPage() {
                   onClick={() => setFilter(f)}
                   className={`px-6 py-2 rounded-xl text-sm font-bold transition-all uppercase tracking-widest ${
                     filter === f 
-                    ? 'bg-white text-primary-600 shadow-sm' 
+                    ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-500/20 scale-[1.02]' 
                     : 'text-surface-400 hover:text-surface-600'
                   }`}
                 >

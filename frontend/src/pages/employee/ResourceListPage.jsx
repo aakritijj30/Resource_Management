@@ -22,11 +22,13 @@ const SCOPE_TABS = [
   { key: 'department', label: 'My Department' },
 ];
 
+import { useGlobalFilters } from '../../store/filterContext';
+
 export default function ResourceListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { departmentId: scopeFilter, setDepartmentId: setScopeFilter } = useGlobalFilters();
   const [typeFilter, setTypeFilter] = useState('all');
-  const [scopeFilter, setScopeFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [approvalFilter, setApprovalFilter] = useState('all');
   const { data: resources = [], isLoading } = useResources();
@@ -140,6 +142,29 @@ export default function ResourceListPage() {
               >
                 Instant Booking
               </button>
+            </div>
+          </div>
+
+          <div className="h-px w-full bg-surface-100" />
+
+          {/* Type Filter */}
+          <div>
+            <p className="text-xs font-semibold text-surface-500 uppercase tracking-widest mb-3">Resource Type</p>
+            <div className="flex flex-wrap gap-2">
+              {ALL_TYPES.map(type => (
+                <button
+                  key={type}
+                  onClick={() => setTypeFilter(type)}
+                  className={clsx(
+                    'rounded-full border px-4 py-2 text-sm font-medium transition-all capitalize',
+                    typeFilter === type
+                      ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-500/20 scale-[1.02]'
+                      : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 hover:text-surface-900'
+                  )}
+                >
+                  {type.replace('_', ' ')}
+                </button>
+              ))}
             </div>
           </div>
 

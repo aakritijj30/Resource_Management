@@ -11,9 +11,10 @@ import { Filter, Calendar, LayoutGrid, ChevronDown } from 'lucide-react'
 
 const STATUSES = ['all', 'pending', 'approved', 'rejected', 'cancelled', 'completed']
 
+import { useGlobalFilters } from '../../store/filterContext'
+
 export default function AllBookingsPage() {
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [scopeFilter, setScopeFilter] = useState('all') // 'all', 'common', or dept_id
+  const { statusFilter, setStatusFilter, departmentId: scopeFilter, setDepartmentId: setScopeFilter } = useGlobalFilters()
   const [sortOrder, setSortOrder] = useState('latest') // 'latest', 'earliest'
 
   const { data: departments = [] } = useQuery({
@@ -66,7 +67,7 @@ export default function AllBookingsPage() {
                   className={clsx(
                     'rounded-full border px-4 py-1.5 text-xs font-bold capitalize transition-all duration-200',
                     statusFilter === s
-                      ? 'border-primary-200 bg-primary-100 text-primary-700 shadow-sm'
+                      ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-500/20 scale-[1.02]'
                       : 'border-surface-200 bg-white text-surface-500 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700'
                   )}
                 >

@@ -11,8 +11,10 @@ import {
 
 const COLORS = ['#6366f1', '#22d3ee', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6']
 
+import { useGlobalFilters } from '../../store/filterContext'
+
 export default function ReportsDashboardPage() {
-  const [selectedDeptId, setSelectedDeptId] = useState('all')
+  const { departmentId: selectedDeptId, setDepartmentId: setSelectedDeptId } = useGlobalFilters()
 
   const { data: departments = [] } = useQuery({
     queryKey: ['departments'],

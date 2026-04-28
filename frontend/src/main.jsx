@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.jsx'
 import { AuthProvider } from './store/authContext.jsx'
 import { BookingProvider } from './store/bookingContext.jsx'
+import { FilterProvider } from './store/filterContext.jsx'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -19,7 +20,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <AuthProvider>
           <BookingProvider>
-            <App />
+            <FilterProvider>
+              <App />
+            </FilterProvider>
           </BookingProvider>
         </AuthProvider>
       </BrowserRouter>

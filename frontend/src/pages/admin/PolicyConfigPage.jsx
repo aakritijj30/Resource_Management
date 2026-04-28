@@ -114,8 +114,10 @@ function PolicyForm({ resource, onClose }) {
                   const newDays = isSelected ? allowedDays & ~day.bit : allowedDays | day.bit;
                   setForm(p => ({ ...(p || currentPolicy), allowed_days: newDays }));
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${
-                  isSelected ? 'bg-primary-500 text-white shadow-sm' : 'bg-surface-200 text-surface-500 hover:bg-surface-300'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                  isSelected 
+                    ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-500/20 scale-[1.02]' 
+                    : 'bg-surface-200 text-surface-500 hover:bg-surface-300'
                 }`}
               >
                 {day.label}
@@ -145,8 +147,10 @@ function PolicyForm({ resource, onClose }) {
                   if (newDepts.length === 0) newDepts = null;
                   setForm(p => ({ ...(p || currentPolicy), allowed_department_ids: newDepts }));
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${
-                  isSelected ? 'bg-primary-500 text-white shadow-sm' : 'bg-surface-200 text-surface-500 hover:bg-surface-300'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                  isSelected 
+                    ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-500/20 scale-[1.02]' 
+                    : 'bg-surface-200 text-surface-500 hover:bg-surface-300'
                 }`}
               >
                 {dept.name}

@@ -11,7 +11,10 @@ import { LayoutGrid, ChevronDown } from 'lucide-react';
 
 const TYPES = ['conference_room', 'equipment', 'vehicle', 'lab', 'other'];
 
+import { useGlobalFilters } from '../../store/filterContext';
+
 export default function ResourceManagePage() {
+  const { departmentId: scopeFilter, setDepartmentId: setScopeFilter, statusFilter, setStatusFilter } = useGlobalFilters();
   const { data: resources = [], isLoading } = useResources({ active_only: false });
   const { data: departments = [] } = useQuery({
     queryKey: ['departments'],
@@ -25,8 +28,6 @@ export default function ResourceManagePage() {
   const [showForm, setShowForm] = useState(false);
   const [deactivateId, setDeactivateId] = useState(null);
   const [error, setError] = useState(null);
-  const [scopeFilter, setScopeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
   const [form, setForm] = useState({
     name: '',
     type: 'conference_room',
