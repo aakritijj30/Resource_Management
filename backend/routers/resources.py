@@ -40,8 +40,10 @@ def get_resource(resource_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=ResourceOut, dependencies=[Depends(require_role(RoleEnum.admin))])
 def create(data: ResourceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     resource = create_resource(db, data)
+    db.flush()
     log_action(db, current_user.id, AuditActionEnum.resource_created, "resource", resource.id)
     db.commit()
+    db.refresh(resource)
     return resource
 
 
@@ -51,24 +53,33 @@ def update(resource_id: int, data: ResourceUpdate, db: Session = Depends(get_db)
     resource = update_resource(db, resource_id, data)
     log_action(db, current_user.id, AuditActionEnum.resource_updated, "resource", resource_id)
     db.commit()
+    db.refresh(resource)
     return resource
 
 
 @router.patch("/{resource_id}/deactivate", dependencies=[Depends(require_role(RoleEnum.admin))])
 @router.patch("/{resource_id}/deactivate/", dependencies=[Depends(require_role(RoleEnum.admin))])
 def deactivate(resource_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    resource = deactivate_resource(db, resource_id)
-    log_action(db, current_user.id, AuditActionEnum.resource_deactivated, "resource", resource_id)
-    db.commit()
+    try:
+        resource = deactivate_resource(db, resource_id)
+        log_action(db, current_user.id, AuditActionEnum.resource_deactivated, "resource", resource_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return {"message": "Resource deactivated", "id": resource_id}
 
 
 @router.patch("/{resource_id}/reactivate", dependencies=[Depends(require_role(RoleEnum.admin))])
 @router.patch("/{resource_id}/reactivate/", dependencies=[Depends(require_role(RoleEnum.admin))])
 def reactivate(resource_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    resource = reactivate_resource(db, resource_id)
-    log_action(db, current_user.id, AuditActionEnum.resource_reactivated, "resource", resource_id)
-    db.commit()
+    try:
+        resource = reactivate_resource(db, resource_id)
+        log_action(db, current_user.id, AuditActionEnum.resource_reactivated, "resource", resource_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return {"message": "Resource reactivated", "id": resource_id}
 
 
@@ -88,6 +99,7 @@ def set_policy(resource_id: int, data: PolicyUpdate, db: Session = Depends(get_d
     policy = upsert_policy(db, resource_id, data.model_dump(exclude_unset=True))
     log_action(db, current_user.id, AuditActionEnum.policy_updated, "resource_policy", resource_id)
     db.commit()
+    db.refresh(policy)
     return policy
 
 

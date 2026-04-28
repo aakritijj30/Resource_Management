@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session, joinedload
-from models.booking import Booking, BookingStatusEnum
+from fastapi import HTTPException
+from models.booking import Booking, BookingStatusEnum, AttendanceStatusEnum
 from models.approval import Approval
 from models.approval import ApprovalDecisionEnum
 from models.audit_log import AuditLog
@@ -10,13 +11,16 @@ from schemas.booking import BookingCreate, BookingUpdate
 from services.conflict_service import check_booking_conflict, check_capacity, check_maintenance_block
 from services.policy_service import enforce_policy
 from services.audit_service import log_action
+from services.suggestion_service import build_booking_failure_detail
 from models.audit_log import AuditActionEnum
 from utils.exceptions import (
     BookingNotFoundError, UnauthorizedAccessError, InvalidStateTransitionError, NoManagerAssignedError
 )
 from utils.helpers import validate_future_datetime, validate_time_range
+from utils.resource_rules import is_shared_capacity_resource
 from utils.timezone import now_local_naive, to_local_naive
 from datetime import datetime
+from typing import Optional
 
 
 def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datetime, end_time: datetime, current_user: User, force_preempt: bool = False, exclude_booking_id: int = None):
@@ -27,8 +31,7 @@ def check_and_preempt_conflicts(db: Session, resource_id: int, start_time: datet
         return
 
     # Determine if this resource supports multiple concurrent bookings (Capacity-based)
-    is_parking = "parking" in (resource.name or "").lower()
-    if is_parking:
+    if is_shared_capacity_resource(resource):
         return
 
     if current_user.role not in [RoleEnum.manager, RoleEnum.admin]:
@@ -116,6 +119,8 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> list
         status = BookingStatusEnum.pending
         requires_approval_record = True
         manager_id = user_manager_id
+        if manager_id is None:
+            raise NoManagerAssignedError()
     else:
         status = BookingStatusEnum.approved
         requires_approval_record = False
@@ -127,7 +132,6 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> list
     daily_end_time = end_time.time()
     
     if daily_end_time <= daily_start_time:
-        from fastapi import HTTPException
         raise HTTPException(status_code=422, detail="End time must be after start time on the given days.")
 
     created_bookings = []
@@ -136,12 +140,40 @@ def create_booking(db: Session, data: BookingCreate, current_user: User) -> list
     while current_date <= end_date:
         slot_start = datetime.combine(current_date, daily_start_time)
         slot_end = datetime.combine(current_date, daily_end_time)
-        
+
         # Validation checks per day
-        enforce_policy(db, data.resource_id, slot_start, slot_end)
-        check_maintenance_block(db, data.resource_id, slot_start, slot_end)
-        check_and_preempt_conflicts(db, data.resource_id, slot_start, slot_end, current_user, force_preempt=data.force_preempt)
-        check_capacity(db, data.resource_id, slot_start, slot_end, data.attendees)
+        try:
+            enforce_policy(db, data.resource_id, slot_start, slot_end)
+            check_maintenance_block(db, data.resource_id, slot_start, slot_end)
+            check_and_preempt_conflicts(db, data.resource_id, slot_start, slot_end, current_user, force_preempt=data.force_preempt)
+            check_capacity(db, data.resource_id, slot_start, slot_end, data.attendees)
+        except HTTPException as exc:
+            if isinstance(exc.detail, dict):
+                raise
+
+            reason = "policy"
+            if exc.status_code == 409 and "maintenance" in str(exc.detail).lower():
+                reason = "maintenance"
+            elif exc.status_code == 409 and "capacity" in str(exc.detail).lower():
+                reason = "capacity"
+            elif exc.status_code == 409:
+                reason = "conflict"
+
+            detail = build_booking_failure_detail(
+                db,
+                resource,
+                slot_start,
+                slot_end,
+                data.attendees,
+                current_user,
+                str(exc.detail),
+                reason,
+            )
+            db.rollback()
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail=detail,
+            ) from exc
 
         booking = Booking(
             user_id=current_user.id,
@@ -185,7 +217,6 @@ def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_us
         raise InvalidStateTransitionError(booking.status.value, "updated")
 
     if booking.start_time <= now_local_naive():
-        from fastapi import HTTPException
         raise HTTPException(status_code=422, detail="Cannot edit a booking that has already started")
 
     next_resource_id = data.resource_id or booking.resource_id
@@ -201,11 +232,40 @@ def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_us
         from utils.exceptions import ResourceNotFoundError
         raise ResourceNotFoundError()
 
-    enforce_policy(db, next_resource_id, next_start, next_end)
-    check_maintenance_block(db, next_resource_id, next_start, next_end)
-    check_and_preempt_conflicts(db, next_resource_id, next_start, next_end, current_user, force_preempt=getattr(data, 'force_preempt', False), exclude_booking_id=booking.id)
     next_attendees = data.attendees if data.attendees is not None else booking.attendees
-    check_capacity(db, next_resource_id, next_start, next_end, next_attendees, exclude_booking_id=booking.id)
+    try:
+        enforce_policy(db, next_resource_id, next_start, next_end)
+        check_maintenance_block(db, next_resource_id, next_start, next_end)
+        check_and_preempt_conflicts(db, next_resource_id, next_start, next_end, current_user, force_preempt=getattr(data, 'force_preempt', False), exclude_booking_id=booking.id)
+        check_capacity(db, next_resource_id, next_start, next_end, next_attendees, exclude_booking_id=booking.id)
+    except HTTPException as exc:
+        if isinstance(exc.detail, dict):
+            raise
+
+        reason = "policy"
+        if exc.status_code == 409 and "maintenance" in str(exc.detail).lower():
+            reason = "maintenance"
+        elif exc.status_code == 409 and "capacity" in str(exc.detail).lower():
+            reason = "capacity"
+        elif exc.status_code == 409:
+            reason = "conflict"
+
+        detail = build_booking_failure_detail(
+            db,
+            resource,
+            next_start,
+            next_end,
+            next_attendees,
+            current_user,
+            str(exc.detail),
+            reason,
+            exclude_booking_id=booking.id,
+        )
+        db.rollback()
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=detail,
+        ) from exc
 
     previous_status = booking.status
     approval_required = resource.approval_required
@@ -237,6 +297,8 @@ def update_booking(db: Session, booking_id: int, data: BookingUpdate, current_us
     elif approval_required:
         # If approval is required, ensure it goes to/stays in pending state
         booking.status = BookingStatusEnum.pending
+        if manager_id is None:
+            raise NoManagerAssignedError()
         if booking.approval:
             from models.approval import ApprovalDecisionEnum
             booking.approval.decision = ApprovalDecisionEnum.pending
@@ -285,6 +347,9 @@ def refresh_completed_bookings(db: Session) -> int:
     ).all()
     for booking in updated_approved:
         booking.status = BookingStatusEnum.completed
+        if booking.attendance_status == AttendanceStatusEnum.checked_in:
+            booking.attendance_status = AttendanceStatusEnum.attended
+            booking.attendance_marked_at = now
         log_action(
             db, booking.user_id, AuditActionEnum.booking_completed, "booking", booking.id, {"completed_at": now.isoformat()}
         )
@@ -325,7 +390,6 @@ def cancel_booking(db: Session, booking_id: int, current_user: User) -> Booking:
 
     # Must be before end time
     if booking.end_time <= now_local_naive():
-        from fastapi import HTTPException
         raise HTTPException(status_code=422, detail="Cannot cancel a booking that has already ended")
 
     booking.status = BookingStatusEnum.cancelled
@@ -339,6 +403,74 @@ def cancel_booking(db: Session, booking_id: int, current_user: User) -> Booking:
             "cancelled_by": current_user.full_name,
             "cancelled_by_role": current_user.role.value if hasattr(current_user.role, "value") else current_user.role,
         },
+    )
+    db.commit()
+    from services.waitlist_service import process_waitlist_for_resource
+
+    process_waitlist_for_resource(db, booking.resource_id, booking.start_time, booking.end_time)
+    db.refresh(booking)
+    return booking
+
+
+def check_in_booking(db: Session, booking_id: int, current_user: User) -> Booking:
+    booking = db.query(Booking).options(joinedload(Booking.user)).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise BookingNotFoundError()
+    if booking.user_id != current_user.id and current_user.role != RoleEnum.admin:
+        raise UnauthorizedAccessError()
+    if booking.status not in [BookingStatusEnum.approved, BookingStatusEnum.completed]:
+        raise InvalidStateTransitionError(booking.status.value, "checked_in")
+
+    now = now_local_naive()
+    if now < booking.start_time:
+        raise HTTPException(status_code=422, detail="Check-in opens once the booking start time is reached.")
+    if now > booking.end_time:
+        raise HTTPException(status_code=422, detail="Cannot check in after the booking has ended.")
+
+    booking.attendance_status = AttendanceStatusEnum.checked_in
+    booking.checked_in_at = now
+    booking.attendance_marked_by = current_user.id
+    booking.attendance_marked_at = now
+    log_action(
+        db,
+        current_user.id,
+        AuditActionEnum.booking_updated,
+        "booking",
+        booking.id,
+        {"attendance_status": booking.attendance_status.value, "checked_in_at": now.isoformat()},
+    )
+    db.commit()
+    db.refresh(booking)
+    return booking
+
+
+def mark_booking_no_show(db: Session, booking_id: int, current_user: User) -> Booking:
+    booking = db.query(Booking).options(joinedload(Booking.user)).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise BookingNotFoundError()
+    if current_user.role not in [RoleEnum.admin, RoleEnum.manager]:
+        raise UnauthorizedAccessError()
+
+    now = now_local_naive()
+    if now < booking.start_time:
+        raise HTTPException(status_code=422, detail="You can mark no-show only after the booking has started.")
+    if booking.status not in [BookingStatusEnum.approved, BookingStatusEnum.completed]:
+        raise InvalidStateTransitionError(booking.status.value, "marked_no_show")
+    if booking.attendance_status in [AttendanceStatusEnum.checked_in, AttendanceStatusEnum.attended]:
+        raise HTTPException(status_code=422, detail="Checked-in or attended bookings cannot be marked as no-show.")
+
+    booking.attendance_status = AttendanceStatusEnum.no_show
+    booking.attendance_marked_by = current_user.id
+    booking.attendance_marked_at = now
+    if booking.status == BookingStatusEnum.approved and now >= booking.end_time:
+        booking.status = BookingStatusEnum.completed
+    log_action(
+        db,
+        current_user.id,
+        AuditActionEnum.booking_updated,
+        "booking",
+        booking.id,
+        {"attendance_status": booking.attendance_status.value, "marked_at": now.isoformat()},
     )
     db.commit()
     db.refresh(booking)

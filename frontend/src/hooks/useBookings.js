@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getBookings, getBooking, createBooking, cancelBooking, getAuditTrail, getDepartmentBookings, updateBooking } from '../api/bookingApi';
+import { getBookings, getBooking, createBooking, cancelBooking, checkInBooking, markNoShow, getAuditTrail, getDepartmentBookings, updateBooking } from '../api/bookingApi';
 
 export function useBookings(params) {
   return useQuery({
@@ -54,6 +54,30 @@ export function useUpdateBooking() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['bookings'] });
       qc.invalidateQueries({ queryKey: ['bookings', id.toString()] });
+    },
+  });
+}
+
+export function useCheckInBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: checkInBooking,
+    onSuccess: (_, bookingId) => {
+      qc.invalidateQueries({ queryKey: ['bookings'] });
+      qc.invalidateQueries({ queryKey: ['bookings', bookingId] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
+  });
+}
+
+export function useMarkNoShow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: markNoShow,
+    onSuccess: (_, bookingId) => {
+      qc.invalidateQueries({ queryKey: ['bookings'] });
+      qc.invalidateQueries({ queryKey: ['bookings', bookingId] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
     },
   });
 }

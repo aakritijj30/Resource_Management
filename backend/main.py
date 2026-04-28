@@ -11,6 +11,7 @@ from routers.maintenance import router as maintenance_router
 from routers.reports import router as reports_router
 from routers.departments import router as departments_router
 from routers.notifications import router as notifications_router
+from routers.waitlists import router as waitlists_router
 
 
 # Import all models so Alembic and create_all can see them
@@ -50,6 +51,7 @@ app.include_router(approvals_router)
 app.include_router(maintenance_router)
 app.include_router(reports_router)
 app.include_router(notifications_router)
+app.include_router(waitlists_router)
 
 
 
@@ -59,6 +61,7 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
     _ensure_department_id_column()
     _ensure_audit_action_enum()
+    _ensure_booking_attendance_columns()
     _ensure_resource_policies_columns()
     db = SessionLocal()
     try:
@@ -123,21 +126,46 @@ def _ensure_resource_policies_columns():
 
 def _ensure_audit_action_enum():
     """
-    Backfill older Postgres enum types that predate booking_updated.
+    Backfill older Postgres enum types with any missing audit action values.
     """
     db = SessionLocal()
     try:
         # Check if we are on Postgres first
         if "postgresql" in str(db.bind.url):
-            db.execute(text("DO $$ BEGIN "
-                            "IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
-                            "WHERE t.typname = 'auditactionenum' AND e.enumlabel = 'booking_updated') THEN "
-                            "ALTER TYPE auditactionenum ADD VALUE 'booking_updated'; "
-                            "END IF; "
-                            "END $$;"))
+            for enum_value in ["booking_updated", "resource_reactivated"]:
+                db.execute(
+                    text(
+                        "ALTER TYPE auditactionenum "
+                        f"ADD VALUE IF NOT EXISTS '{enum_value}'"
+                    )
+                )
             db.commit()
     except Exception as e:
         print(f"DEBUG: Skipping audit enum check (likely already exists or not Postgres): {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def _ensure_booking_attendance_columns():
+    db = SessionLocal()
+    try:
+        inspector = inspect(db.bind)
+        if not inspector.has_table("bookings"):
+            return
+
+        columns = {col["name"] for col in inspector.get_columns("bookings")}
+        if "attendance_status" not in columns:
+            db.execute(text("ALTER TABLE bookings ADD COLUMN attendance_status VARCHAR(50) DEFAULT 'unknown'"))
+        if "checked_in_at" not in columns:
+            db.execute(text("ALTER TABLE bookings ADD COLUMN checked_in_at TIMESTAMP"))
+        if "attendance_marked_by" not in columns:
+            db.execute(text("ALTER TABLE bookings ADD COLUMN attendance_marked_by INTEGER"))
+        if "attendance_marked_at" not in columns:
+            db.execute(text("ALTER TABLE bookings ADD COLUMN attendance_marked_at TIMESTAMP"))
+        db.commit()
+    except Exception as e:
+        print(f"DEBUG: Skipping booking attendance column check: {e}")
         db.rollback()
     finally:
         db.close()

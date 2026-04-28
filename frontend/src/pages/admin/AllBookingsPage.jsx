@@ -3,6 +3,7 @@ import StatusBadge from '../../components/StatusBadge'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import EmptyState from '../../components/EmptyState'
 import { useQuery } from '@tanstack/react-query'
+import { useMarkNoShow } from '../../hooks/useBookings'
 import api from '../../api/axiosInstance'
 import { getDepartments } from '../../api/departmentApi'
 import clsx from 'clsx'
@@ -15,6 +16,7 @@ export default function AllBookingsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [scopeFilter, setScopeFilter] = useState('all') // 'all', 'common', or dept_id
   const [sortOrder, setSortOrder] = useState('latest') // 'latest', 'earliest'
+  const markNoShow = useMarkNoShow()
 
   const { data: departments = [] } = useQuery({
     queryKey: ['departments'],
@@ -40,6 +42,12 @@ export default function AllBookingsPage() {
   // The backend supports filtering by status? No, I didn't add it yet.
   // Let's stick to frontend status filtering for now as it's already there and fast.
   const filtered = statusFilter === 'all' ? bookings : bookings.filter(b => b.status === statusFilter)
+  const canMarkNoShow = (booking) => {
+    const now = new Date()
+    return ['approved', 'completed'].includes(booking.status)
+      && booking.attendance_status === 'unknown'
+      && new Date(booking.start_time) <= now
+  }
 
   return (
     <div className="w-full flex-col flex animate-fade-in relative z-10 pb-12">
@@ -150,7 +158,7 @@ export default function AllBookingsPage() {
                   </div>
                   <StatusBadge status={b.status} />
                 </div>
-                <div className="grid grid-cols-1 gap-2 text-sm text-surface-900/65">
+                  <div className="grid grid-cols-1 gap-2 text-sm text-surface-900/65">
                   <div className="rounded-xl bg-surface-50 p-3 border border-surface-100">
                     <p className="text-[10px] uppercase tracking-[0.24em] text-primary-600 font-bold">Start</p>
                     <p className="mt-1">{formatISTDateTime(b.start_time, false)}</p>
@@ -159,6 +167,19 @@ export default function AllBookingsPage() {
                     <p className="text-[10px] uppercase tracking-[0.24em] text-primary-600 font-bold">End</p>
                     <p className="mt-1">{formatISTTime(b.end_time)}</p>
                   </div>
+                  <div className="rounded-xl bg-surface-50 p-3 border border-surface-100">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-primary-600 font-bold">Attendance</p>
+                    <p className="mt-1 capitalize">{b.attendance_status.replace('_', ' ')}</p>
+                  </div>
+                  {canMarkNoShow(b) && (
+                    <button
+                      className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700"
+                      onClick={() => markNoShow.mutate(b.id)}
+                      disabled={markNoShow.isPending}
+                    >
+                      {markNoShow.isPending ? 'Marking...' : 'Mark No-Show'}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -174,6 +195,8 @@ export default function AllBookingsPage() {
                   <th className="pb-4 pt-2 text-left px-4">Start</th>
                   <th className="pb-4 pt-2 text-left px-4">End</th>
                   <th className="pb-4 pt-2 text-left px-4">Status</th>
+                  <th className="pb-4 pt-2 text-left px-4">Attendance</th>
+                  <th className="pb-4 pt-2 text-left px-4">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-50">
@@ -194,6 +217,20 @@ export default function AllBookingsPage() {
                     <td className="py-4 px-4 text-surface-700 font-semibold">{formatISTDateTime(b.start_time, false)}</td>
                     <td className="py-4 px-4 text-surface-700 font-semibold">{formatISTTime(b.end_time)}</td>
                     <td className="py-4 px-4"><StatusBadge status={b.status} /></td>
+                    <td className="py-4 px-4 capitalize text-surface-700 font-semibold">{b.attendance_status.replace('_', ' ')}</td>
+                    <td className="py-4 px-4">
+                      {canMarkNoShow(b) ? (
+                        <button
+                          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-amber-700"
+                          onClick={() => markNoShow.mutate(b.id)}
+                          disabled={markNoShow.isPending}
+                        >
+                          {markNoShow.isPending ? 'Marking...' : 'No-Show'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-surface-400">-</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

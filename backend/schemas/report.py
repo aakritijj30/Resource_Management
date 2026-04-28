@@ -25,6 +25,22 @@ class TrendPoint(BaseModel):
     rejected: int
 
 
+class AnomalyInsight(BaseModel):
+    category: str
+    severity: str
+    signal_strength: str
+    title: str
+    subject: str
+    metric: str
+    explanation: str
+    booking_id: Optional[int] = None
+    user_id: Optional[int] = None
+    resource_id: Optional[int] = None
+    resource_name: Optional[str] = None
+    user_name: Optional[str] = None
+    period_days: Optional[int] = None
+
+
 class ReportSummary(BaseModel):
     total_bookings: int
     pending_bookings: int
@@ -35,3 +51,4 @@ class ReportSummary(BaseModel):
     top_resources: List[ResourceUsageStat]
     dept_usage: List[DeptUsageStat]
     trends: List[TrendPoint]
+    anomalies: List[AnomalyInsight]

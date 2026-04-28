@@ -33,3 +33,4 @@ class Resource(Base):
     policy = relationship("ResourcePolicy", back_populates="resource", uselist=False, cascade="all, delete-orphan")
     bookings = relationship("Booking", back_populates="resource")
     maintenance_blocks = relationship("MaintenanceBlock", back_populates="resource", cascade="all, delete-orphan")
+    waitlist_entries = relationship("WaitlistEntry", back_populates="resource", cascade="all, delete-orphan")

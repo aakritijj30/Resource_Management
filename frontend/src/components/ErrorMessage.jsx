@@ -1,7 +1,8 @@
 export default function ErrorMessage({ error }) {
   if (!error) return null
 
-  const msg = error?.response?.data?.detail || error?.message || 'Something went wrong'
+  const detail = error?.response?.data?.detail
+  const msg = typeof detail === 'string' ? detail : detail?.message || error?.message || 'Something went wrong'
   const lower = msg.toLowerCase()
   const isConflict = lower.includes('conflict')
   const isPolicy = lower.includes('policy') || lower.includes('duration') || lower.includes('hours')

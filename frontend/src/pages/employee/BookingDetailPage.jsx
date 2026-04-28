@@ -4,8 +4,9 @@ import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ConfirmModal from '../../components/ConfirmModal';
 import ErrorMessage from '../../components/ErrorMessage';
-import { useBooking, useAuditTrail, useCancelBooking } from '../../hooks/useBookings';
+import { useBooking, useAuditTrail, useCancelBooking, useCheckInBooking, useMarkNoShow } from '../../hooks/useBookings';
 import { useResource } from '../../hooks/useResources';
+import { useAuth } from '../../hooks/useAuth';
 import { formatISTDate, formatISTTime, isAfterNowIST } from '../../utils/time';
 import { ArrowLeft } from 'lucide-react';
 
@@ -21,13 +22,30 @@ function getStatusNote(status) {
 export default function BookingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: booking, isLoading } = useBooking(id);
   const { data: audit = [] } = useAuditTrail(id);
   const { data: resource } = useResource(booking?.resource_id);
   const cancelBooking = useCancelBooking();
+  const checkInBooking = useCheckInBooking();
+  const markNoShow = useMarkNoShow();
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const canCancel = booking && ['pending', 'approved'].includes(booking.status) && isAfterNowIST(booking.start_time);
+  const now = new Date();
+  const startAt = booking ? new Date(booking.start_time) : null;
+  const endAt = booking ? new Date(booking.end_time) : null;
+  const canCheckIn = booking
+    && booking.status === 'approved'
+    && booking.attendance_status === 'unknown'
+    && startAt <= now
+    && endAt >= now
+    && (booking.user_id === user?.id || user?.role === 'admin');
+  const canMarkNoShow = booking
+    && ['admin', 'manager'].includes(user?.role)
+    && ['approved', 'completed'].includes(booking.status)
+    && booking.attendance_status === 'unknown'
+    && startAt <= now;
 
   const handleCancel = async () => {
     await cancelBooking.mutateAsync(Number(id));
@@ -89,28 +107,55 @@ export default function BookingDetailPage() {
             <p className="text-[10px] font-bold text-surface-400 mb-1 uppercase tracking-widest">Resource</p>
             <p className="font-semibold text-surface-900 truncate">{resource?.name || `#${booking.resource_id}`}</p>
           </div>
+          <div className="bg-surface-50 border border-surface-200 rounded-xl p-4">
+            <p className="text-[10px] font-bold text-surface-400 mb-1 uppercase tracking-widest">Attendance</p>
+            <p className="font-semibold text-surface-900 capitalize">{booking.attendance_status.replace('_', ' ')}</p>
+            {booking.checked_in_at && <p className="text-surface-600 text-sm mt-0.5 font-medium">Checked in {formatISTTime(booking.checked_in_at)}</p>}
+          </div>
           <div className="bg-surface-50 border border-surface-200 rounded-xl p-4 md:col-span-4">
             <p className="text-[10px] font-bold text-surface-400 mb-1 uppercase tracking-widest">Location</p>
             <p className="font-semibold text-surface-900">{resource?.location || 'Not available'}</p>
           </div>
         </div>
 
-        {canCancel && (
+        {(canCancel || canCheckIn || canMarkNoShow) && (
           <div className="flex justify-end gap-3 border-t border-surface-100 pt-6">
-            <button 
-              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors"
-              onClick={() => navigate(`/employee/bookings/${id}/edit`)}
-            >
-              Edit Booking
-            </button>
-            <button className="rounded-xl px-5 py-2.5 text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors" onClick={() => setShowCancelModal(true)}>
-              Cancel Booking
-            </button>
+            {canCancel && (
+              <button 
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors"
+                onClick={() => navigate(`/employee/bookings/${id}/edit`)}
+              >
+                Edit Booking
+              </button>
+            )}
+            {canCheckIn && (
+              <button
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                onClick={() => checkInBooking.mutate(Number(id))}
+                disabled={checkInBooking.isPending}
+              >
+                {checkInBooking.isPending ? 'Checking In...' : 'Check In'}
+              </button>
+            )}
+            {canMarkNoShow && (
+              <button
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+                onClick={() => markNoShow.mutate(Number(id))}
+                disabled={markNoShow.isPending}
+              >
+                {markNoShow.isPending ? 'Marking...' : 'Mark No-Show'}
+              </button>
+            )}
+            {canCancel && (
+              <button className="rounded-xl px-5 py-2.5 text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors" onClick={() => setShowCancelModal(true)}>
+                Cancel Booking
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      <ErrorMessage error={cancelBooking.error} />
+      <ErrorMessage error={cancelBooking.error || checkInBooking.error || markNoShow.error} />
 
       <div className="grid md:grid-cols-2 gap-6 mt-6">
         <div className="card bg-white/60 border border-surface-200">

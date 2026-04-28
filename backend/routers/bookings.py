@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from schemas.booking import BookingCreate, BookingOut, BookingUpdate, BookingAuditOut
-from services.booking_service import create_booking, cancel_booking, get_bookings, get_booking_by_id, update_booking, get_booking_audit_trail
+from services.booking_service import create_booking, cancel_booking, get_bookings, get_booking_by_id, update_booking, get_booking_audit_trail, check_in_booking, mark_booking_no_show
 from utils.dependencies import get_db, get_current_user
 from models.user import User, RoleEnum
 
@@ -59,3 +59,15 @@ def edit_booking(booking_id: int, data: BookingUpdate, db: Session = Depends(get
 @router.patch("/{booking_id}/cancel/", response_model=BookingOut)
 def cancel(booking_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return cancel_booking(db, booking_id, current_user)
+
+
+@router.patch("/{booking_id}/check-in", response_model=BookingOut)
+@router.patch("/{booking_id}/check-in/", response_model=BookingOut)
+def check_in(booking_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return check_in_booking(db, booking_id, current_user)
+
+
+@router.patch("/{booking_id}/mark-no-show", response_model=BookingOut, dependencies=[Depends(get_current_user)])
+@router.patch("/{booking_id}/mark-no-show/", response_model=BookingOut, dependencies=[Depends(get_current_user)])
+def mark_no_show(booking_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return mark_booking_no_show(db, booking_id, current_user)

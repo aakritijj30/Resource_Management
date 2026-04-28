@@ -133,3 +133,67 @@ def test_refresh_marks_expired_approved_bookings_completed_and_logs(db):
     assert updated == 1
     assert b.status == BookingStatusEnum.completed
     assert log is not None
+
+
+def test_shared_capacity_parking_allows_overlap_within_capacity(db):
+    resource = Resource(name="Parking Slot P1", type=ResourceTypeEnum.other, capacity=10, approval_required=False)
+    first_user = User(email=f"parking_first_{uuid4().hex[:8]}@test.com", full_name="Parking First", hashed_password="x", role=RoleEnum.employee)
+    second_user = User(email=f"parking_second_{uuid4().hex[:8]}@test.com", full_name="Parking Second", hashed_password="x", role=RoleEnum.employee)
+    db.add_all([resource, first_user, second_user])
+    db.commit()
+    db.refresh(resource)
+    db.refresh(first_user)
+    db.refresh(second_user)
+
+    first = BookingCreate(
+        resource_id=resource.id,
+        start_time=NOW_FUTURE,
+        end_time=NOW_FUTURE + timedelta(hours=1),
+        purpose="Parking batch one",
+        attendees=3,
+    )
+    second = BookingCreate(
+        resource_id=resource.id,
+        start_time=NOW_FUTURE,
+        end_time=NOW_FUTURE + timedelta(hours=1),
+        purpose="Parking batch two",
+        attendees=4,
+    )
+
+    create_booking(db, first, first_user)
+    created = create_booking(db, second, second_user)
+    assert len(created) == 1
+
+
+def test_shared_capacity_company_van_blocks_only_when_capacity_exceeded(db):
+    resource = Resource(name="Company Van A", type=ResourceTypeEnum.vehicle, capacity=5, approval_required=False)
+    first_user = User(email=f"van_first_{uuid4().hex[:8]}@test.com", full_name="Van First", hashed_password="x", role=RoleEnum.employee)
+    second_user = User(email=f"van_second_{uuid4().hex[:8]}@test.com", full_name="Van Second", hashed_password="x", role=RoleEnum.employee)
+    db.add_all([resource, first_user, second_user])
+    db.commit()
+    db.refresh(resource)
+    db.refresh(first_user)
+    db.refresh(second_user)
+
+    first = BookingCreate(
+        resource_id=resource.id,
+        start_time=NOW_FUTURE,
+        end_time=NOW_FUTURE + timedelta(hours=1),
+        purpose="Van batch one",
+        attendees=3,
+    )
+    overflow = BookingCreate(
+        resource_id=resource.id,
+        start_time=NOW_FUTURE,
+        end_time=NOW_FUTURE + timedelta(hours=1),
+        purpose="Van overflow",
+        attendees=3,
+    )
+
+    create_booking(db, first, first_user)
+    with pytest.raises(HTTPException) as exc:
+        create_booking(db, overflow, second_user)
+
+    assert exc.value.status_code == 409
+    assert isinstance(exc.value.detail, dict)
+    assert exc.value.detail.get("reason") == "capacity"

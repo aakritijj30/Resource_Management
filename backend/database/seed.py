@@ -4,9 +4,7 @@ Does NOT clear the database. Use 'upsert' logic to prevent duplicates.
 """
 import os
 import sys
-from datetime import datetime
 from sqlalchemy import text, func
-from sqlalchemy.orm import Session
 
 # Add the parent directory to sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,6 +24,7 @@ def seed_data():
     try:
         # Part 1: Departments (no managers yet)
         print("Syncing Departments...")
+        dept_id_map = {}
         depts_data = [
             {"id": 1, "name": "Data and AI"},
             {"id": 2, "name": "Salesforce"},
@@ -35,12 +34,24 @@ def seed_data():
         ]
         
         for d in depts_data:
-            existing = db.query(Department).filter(Department.id == d["id"]).first()
-            if not existing:
+            existing_by_name = db.query(Department).filter(Department.name == d["name"]).first()
+            existing_by_id = db.query(Department).filter(Department.id == d["id"]).first()
+
+            if existing_by_name:
+                existing_by_name.name = d["name"]
+                dept_id_map[d["id"]] = existing_by_name.id
+                continue
+
+            if existing_by_id:
+                existing_by_id.name = d["name"]
+                dept_id_map[d["id"]] = existing_by_id.id
+                continue
+
+            if not existing_by_name and not existing_by_id:
                 dept = Department(id=d["id"], name=d["name"])
                 db.add(dept)
-            else:
-                existing.name = d["name"]
+                db.flush()
+                dept_id_map[d["id"]] = dept.id
         db.commit()
 
         # Part 2: Users
@@ -63,9 +74,13 @@ def seed_data():
                     full_name=u["name"],
                     hashed_password=hash_password(u["pass"]),
                     role=u["role"],
-                    department_id=u["dept"]
+                    department_id=dept_id_map.get(u["dept"])
                 )
                 db.add(new_user)
+            else:
+                existing.full_name = u["name"]
+                existing.role = u["role"]
+                existing.department_id = dept_id_map.get(u["dept"])
         db.commit()
 
         # Part 3: Link Managers
@@ -76,9 +91,9 @@ def seed_data():
         bob = db.query(User).filter(User.email == "manager_data@company.com").first()
         
         if alice:
-            db.query(Department).filter(Department.id == 5).update({"manager_id": alice.id})
+            db.query(Department).filter(Department.name == "Digital Transformation").update({"manager_id": alice.id})
         if bob:
-            db.query(Department).filter(Department.id == 1).update({"manager_id": bob.id})
+            db.query(Department).filter(Department.name == "Data and AI").update({"manager_id": bob.id})
         db.commit()
 
         # Part 3: Restore Resources
@@ -129,17 +144,17 @@ def seed_data():
                 existing.location = r_data["loc"]
                 existing.image_url = r_data["img"]
                 existing.type = r_data["type"]
-                existing.department_id = r_data["dept_id"]
+                existing.department_id = dept_id_map.get(r_data["dept_id"])
                 db.flush()
             else:
                 res = Resource(
                     name=res_name,
                     type=r_data["type"],
-                    department_id=r_data["dept_id"],
+                    department_id=dept_id_map.get(r_data["dept_id"]),
                     image_url=r_data["img"],
                     location=r_data["loc"],
                     capacity=10 if r_data["type"] != ResourceTypeEnum.other else 1,
-                    approval_required=True if r_data["dept_id"] else False
+                    approval_required=True if dept_id_map.get(r_data["dept_id"]) else False
                 )
                 db.add(res)
                 db.flush()

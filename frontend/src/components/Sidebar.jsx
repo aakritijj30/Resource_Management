@@ -8,11 +8,13 @@ const NAV_LINKS = {
     { label: 'Dashboard',   to: '/employee/dashboard',  icon: 'DB' },
     { label: 'Resources',   to: '/employee/resources',   icon: 'RS' },
     { label: 'My Bookings', to: '/employee/bookings',    icon: 'BK' },
+    { label: 'Waitlists',   to: '/employee/waitlists',   icon: 'WL' },
   ],
   manager: [
     { label: 'Dashboard',   to: '/manager/approvals',    icon: 'DB' },
     { label: 'Employee Approvals', to: '/manager/pending-approvals', icon: 'EA' },
     { label: 'My Bookings',    to: '/employee/bookings',         icon: 'BK' },
+    { label: 'Waitlists',      to: '/employee/waitlists',        icon: 'WL' },
   ],
   admin: [
     { label: 'Dashboard',   to: '/admin',                icon: 'DB' },
@@ -21,6 +23,7 @@ const NAV_LINKS = {
     { label: 'Policies',    to: '/admin/policies',       icon: 'PL' },
     { label: 'Maintenance', to: '/admin/maintenance',    icon: 'MN' },
     { label: 'All Bookings',to: '/admin/bookings',       icon: 'BK' },
+    { label: 'Waitlists',   to: '/employee/waitlists',   icon: 'WL' },
     { label: 'Reports',     to: '/admin/reports',        icon: 'RP' },
   ],
 }

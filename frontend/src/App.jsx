@@ -13,6 +13,7 @@ import ResourceListPage    from './pages/employee/ResourceListPage'
 import BookingFormPage     from './pages/employee/BookingFormPage'
 import MyBookingsPage      from './pages/employee/MyBookingsPage'
 import BookingDetailPage   from './pages/employee/BookingDetailPage'
+import MyWaitlistsPage     from './pages/employee/MyWaitlistsPage'
 
 // Manager pages
 import ApprovalQueuePage   from './pages/manager/ApprovalQueuePage'
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/employee/resources"       element={<ResourceListPage />} />
           <Route path="/employee/book/:resourceId" element={<BookingFormPage />} />
           <Route path="/employee/bookings"        element={<MyBookingsPage />} />
+          <Route path="/employee/waitlists"       element={<MyWaitlistsPage />} />
           <Route path="/employee/bookings/:id"    element={<BookingDetailPage />} />
           <Route path="/employee/bookings/:id/edit" element={<BookingFormPage isEdit={true} />} />
         </Route>

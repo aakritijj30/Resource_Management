@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from models.booking import BookingStatusEnum
+from models.booking import BookingStatusEnum, AttendanceStatusEnum
 
 
 class UserNested(BaseModel):
@@ -50,6 +50,10 @@ class BookingOut(BaseModel):
     purpose: str
     attendees: int
     status: BookingStatusEnum
+    attendance_status: AttendanceStatusEnum
+    checked_in_at: Optional[datetime] = None
+    attendance_marked_by: Optional[int] = None
+    attendance_marked_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     user: Optional[UserNested] = None
@@ -76,3 +80,7 @@ class BookingAuditOut(BaseModel):
     user: Optional[AuditUserNested] = None
 
     model_config = {"from_attributes": True}
+
+
+class AttendanceUpdate(BaseModel):
+    attendance_status: AttendanceStatusEnum

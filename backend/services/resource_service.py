@@ -26,8 +26,6 @@ def get_resource_by_id(db: Session, resource_id: int) -> Resource:
 def create_resource(db: Session, data: ResourceCreate) -> Resource:
     resource = Resource(**data.model_dump())
     db.add(resource)
-    db.commit()
-    db.refresh(resource)
     return resource
 
 
@@ -35,22 +33,16 @@ def update_resource(db: Session, resource_id: int, data: ResourceUpdate) -> Reso
     resource = get_resource_by_id(db, resource_id)
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(resource, key, val)
-    db.commit()
-    db.refresh(resource)
     return resource
 
 
 def deactivate_resource(db: Session, resource_id: int) -> Resource:
     resource = get_resource_by_id(db, resource_id)
     resource.is_active = False
-    db.commit()
-    db.refresh(resource)
     return resource
 
 
 def reactivate_resource(db: Session, resource_id: int) -> Resource:
     resource = get_resource_by_id(db, resource_id)
     resource.is_active = True
-    db.commit()
-    db.refresh(resource)
     return resource

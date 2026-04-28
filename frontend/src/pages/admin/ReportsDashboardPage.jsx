@@ -135,6 +135,64 @@ export default function ReportsDashboardPage() {
                 </ResponsiveContainer>
               </div>
             )}
+
+            <div className="card lg:col-span-2">
+              <div className="flex items-center justify-between gap-4 mb-6">
+                <div>
+                  <h3 className="font-semibold text-surface-900">Anomaly Insights</h3>
+                  <p className="text-sm text-surface-500 mt-1">Operational patterns worth reviewing for governance and space efficiency.</p>
+                </div>
+              </div>
+
+              {!report?.anomalies?.length ? (
+                <p className="text-sm text-surface-500">No anomalies crossed the current thresholds in the last 30 days.</p>
+              ) : (
+                <div className="grid gap-4">
+                  {report.anomalies.map((item, index) => (
+                    <div key={`${item.category}-${item.booking_id || item.user_id || index}`} className="rounded-2xl border border-surface-200 bg-surface-50/60 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`chip uppercase ${
+                              item.severity === 'high'
+                                ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                : item.severity === 'medium'
+                                  ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                  : 'border-surface-200 bg-white text-surface-700'
+                            }`}>
+                              {item.severity}
+                            </span>
+                            <span className={`chip uppercase ${
+                              item.signal_strength === 'strong'
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                : 'border-sky-200 bg-sky-50 text-sky-700'
+                            }`}>
+                              {item.signal_strength} signal
+                            </span>
+                          </div>
+                          <h4 className="text-base font-bold text-surface-900">{item.title}</h4>
+                          <p className="text-sm font-medium text-surface-700">{item.subject}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-primary-700">{item.metric}</p>
+                          {item.period_days && (
+                            <p className="text-xs uppercase tracking-widest text-surface-400 mt-1">Last {item.period_days} days</p>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-surface-600 mt-3">{item.explanation}</p>
+                      {(item.resource_name || item.user_name) && (
+                        <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-surface-500">
+                          {item.user_name && <span>User: {item.user_name}</span>}
+                          {item.resource_name && <span>Resource: {item.resource_name}</span>}
+                          {item.booking_id && <span>Booking #{item.booking_id}</span>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
   )

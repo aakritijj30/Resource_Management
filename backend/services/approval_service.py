@@ -6,6 +6,7 @@ from models.user import User, RoleEnum
 from services.audit_service import log_action
 from models.audit_log import AuditActionEnum
 from services.conflict_service import check_booking_conflict, check_capacity
+from utils.resource_rules import is_shared_capacity_resource
 from utils.exceptions import UnauthorizedAccessError, InvalidStateTransitionError, BookingNotFoundError
 from utils.timezone import now_local_naive
 
@@ -112,7 +113,8 @@ def decide_approval(db: Session, approval_id: int, decision: ApprovalDecisionEnu
 
     if decision == ApprovalDecisionEnum.approved:
         # Re-check slot availability (another booking may have taken it while pending)
-        check_booking_conflict(db, booking.resource_id, booking.start_time, booking.end_time, exclude_booking_id=booking.id)
+        if not is_shared_capacity_resource(booking.resource):
+            check_booking_conflict(db, booking.resource_id, booking.start_time, booking.end_time, exclude_booking_id=booking.id)
         check_capacity(db, booking.resource_id, booking.start_time, booking.end_time, booking.attendees, exclude_booking_id=booking.id)
         booking.status = BookingStatusEnum.approved
         log_action(db, manager.id, AuditActionEnum.booking_approved, "booking", booking.id, {"comment": comment})

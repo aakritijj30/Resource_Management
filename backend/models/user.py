@@ -28,3 +28,4 @@ class User(Base):
     approvals = relationship("Approval", back_populates="manager", foreign_keys="Approval.manager_id")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
+    waitlist_entries = relationship("WaitlistEntry", back_populates="user", cascade="all, delete-orphan")

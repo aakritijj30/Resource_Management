@@ -14,6 +14,13 @@ class BookingStatusEnum(str, enum.Enum):
     completed = "completed"
 
 
+class AttendanceStatusEnum(str, enum.Enum):
+    unknown = "unknown"
+    checked_in = "checked_in"
+    attended = "attended"
+    no_show = "no_show"
+
+
 class Booking(Base):
     __tablename__ = "bookings"
 
@@ -25,6 +32,10 @@ class Booking(Base):
     purpose = Column(Text, nullable=False)
     attendees = Column(Integer, default=1)
     status = Column(Enum(BookingStatusEnum), nullable=False, default=BookingStatusEnum.pending)
+    attendance_status = Column(Enum(AttendanceStatusEnum), nullable=False, default=AttendanceStatusEnum.unknown)
+    checked_in_at = Column(DateTime, nullable=True)
+    attendance_marked_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    attendance_marked_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=now_local_naive)
     updated_at = Column(DateTime, default=now_local_naive, onupdate=now_local_naive)
 
@@ -32,3 +43,4 @@ class Booking(Base):
     resource = relationship("Resource", back_populates="bookings")
     approval = relationship("Approval", back_populates="booking", uselist=False, cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="booking")
+    attendance_marker = relationship("User", foreign_keys=[attendance_marked_by])
